@@ -44,7 +44,7 @@ export default function ProductsPage() {
 
   const fetchProducts = async () => {
     try {
-      const response = await productService.getAllProducts();
+      const response = await productService.getActiveProducts();
       if (response.error) {
         throw new Error(response.error);
       }
@@ -82,7 +82,9 @@ export default function ProductsPage() {
         case 'price-high':
           return b.price - a.price;
         case 'rating':
-          return (b.averageRating || 0) - (a.averageRating || 0);
+          const averageRatingA = a.rating || 0;
+          const averageRatingB = b.rating || 0;
+          return averageRatingB - averageRatingA;
         default:
           return 0;
       }
@@ -146,12 +148,12 @@ export default function ProductsPage() {
         
         {/* Badges */}
         <div className="absolute top-3 left-3 space-y-2">
-          {product.stock <= 5 && product.stock > 0 && (
+          {product.stockQuantity <= 5 && product.stockQuantity > 0 && (
             <Badge className="bg-orange-500 hover:bg-orange-600 text-xs px-2 py-1">
               Low Stock
             </Badge>
           )}
-          {product.stock === 0 && (
+          {product.stockQuantity === 0 && (
             <Badge className="bg-red-500 hover:bg-red-600 text-xs px-2 py-1">
               Sold Out
             </Badge>
@@ -174,7 +176,7 @@ export default function ProductsPage() {
               size="sm"
               className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => handleAddToCart(product)}
-              disabled={product.stock === 0}
+              disabled={product.stockQuantity === 0}
             >
               <ShoppingCart className="h-3 w-3 mr-1" />
               Add
@@ -198,7 +200,7 @@ export default function ProductsPage() {
             <span className="text-2xl font-bold text-primary">
               ${product.price.toFixed(2)}
             </span>
-            {product.averageRating && renderStars(product.averageRating)}
+            {product.rating && renderStars(product.rating)}
           </div>
         </div>
       </CardContent>
@@ -239,7 +241,7 @@ export default function ProductsPage() {
                 <span className="text-2xl font-bold text-primary">
                   ${product.price.toFixed(2)}
                 </span>
-                {product.averageRating && renderStars(product.averageRating)}
+                {product.rating && renderStars(product.rating)}
               </div>
               
               <div className="flex gap-3">
@@ -255,7 +257,7 @@ export default function ProductsPage() {
                 <Button
                   size="sm"
                   onClick={() => handleAddToCart(product)}
-                  disabled={product.stock === 0}
+                  disabled={product.stockQuantity === 0}
                 >
                   <ShoppingCart className="h-3 w-3 mr-1" />
                   Add to Cart
@@ -291,17 +293,6 @@ export default function ProductsPage() {
       {/* Search and Filters Bar */}
       <div className="container-fluid">
         <div className="bg-white rounded-2xl shadow-sm border p-6 space-y-6">
-          {/* Search Bar */}
-          <div className="relative max-w-2xl mx-auto">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-              placeholder="Search for products, brands, or categories..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-12 pr-4 h-12 text-lg border-0 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-
           {/* Filter Controls */}
           <div className="flex flex-wrap gap-4 items-center justify-between">
             <div className="flex flex-wrap gap-3 items-center">

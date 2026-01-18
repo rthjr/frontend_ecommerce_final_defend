@@ -4,9 +4,9 @@ import "./globals.css";
 import StoreProvider from "@/lib/redux/StoreProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Toaster } from "@/components/ui/sonner";
-import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
 import CartDrawer from "@/components/cart/CartDrawer";
+import RoleBasedRedirect from "@/components/auth/RoleBasedRedirect";
+import ConditionalLayout from "@/components/layout/ConditionalLayout";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -22,17 +22,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} antialiased flex min-h-screen flex-col`}>
+      <body className={`${inter.className} antialiased flex min-h-screen flex-col  m-auto`}>
         <StoreProvider>
           <AuthProvider>
-            <Header />
+            <RoleBasedRedirect />
             <CartDrawer />
-            <main className="flex-1">
-              <div className="container mx-auto px-4 py-6">
-                {children}
-              </div>
-            </main>
-            <Footer />
+            <ConditionalLayout>
+              {children}
+            </ConditionalLayout>
             <Toaster />
           </AuthProvider>
         </StoreProvider>

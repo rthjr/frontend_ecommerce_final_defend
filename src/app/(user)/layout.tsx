@@ -1,0 +1,36 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
+import { UserSidebar } from '@/components/profile/UserSidebar';
+
+export default function UserLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { hasRole } = useAuth();
+  const router = useRouter();
+
+  // useEffect(() => {
+  //   // Allow access for ROLE_USER or ROLE_ADMIN
+  //   if (!hasRole('ROLE_USER') && !hasRole('ROLE_ADMIN')) {
+  //     router.push('/unauthorized');
+  //   }
+  // }, [hasRole, router]);
+
+  if (!hasRole('ROLE_USER') && !hasRole('ROLE_ADMIN')) {
+    return null;
+  }
+
+  return (
+    <div className="flex min-h-screen">
+      <div className="flex-1">
+        <main className="p-6">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+}

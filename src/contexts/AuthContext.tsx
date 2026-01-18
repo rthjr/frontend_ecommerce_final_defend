@@ -105,7 +105,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initAuth = async () => {
       const accessToken = authService.getAccessToken();
-      const userInfo = authService.getUserInfo();
+      const userInfo = authService.getUserInfoWithFallback();
 
       if (accessToken && userInfo) {
         dispatch({
@@ -212,6 +212,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     dispatch({ type: 'CLEAR_ERROR' });
   };
 
+  // Role management methods
+  const hasRole = (role: string): boolean => {
+    return state.user?.roles?.includes(role) || false;
+  };
+
+  const hasAnyRole = (roles: string[]): boolean => {
+    if (!state.user?.roles) return false;
+    return roles.some(role => state.user!.roles.includes(role));
+  };
+
+  const isAdmin = (): boolean => {
+    return hasRole('ROLE_ADMIN');
+  };
+
+  const isUser = (): boolean => {
+    return hasRole('ROLE_USER');
+  };
+
+  const isCustomer = (): boolean => {
+    return hasRole('ROLE_CUSTOMER');
+  };
+
   const value: AuthContextType = {
     ...state,
     login,
@@ -220,6 +242,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     refreshAccessToken,
     getCurrentUser,
     loginWithOAuth2,
+    hasRole,
+    hasAnyRole,
+    isAdmin,
+    isUser,
+    isCustomer,
   };
 
   return (

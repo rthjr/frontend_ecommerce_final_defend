@@ -66,4 +66,9 @@ export interface AuthContextType {
   refreshAccessToken: () => Promise<void>;
   getCurrentUser: () => Promise<void>;
   loginWithOAuth2: (provider: string) => void;
+  hasRole: (role: string) => boolean;
+  hasAnyRole: (roles: string[]) => boolean;
+  isAdmin: () => boolean;
+  isUser: () => boolean;
+  isCustomer: () => boolean;
 }

@@ -7,6 +7,7 @@ import {
   UserInfo, 
   OAuth2Providers 
 } from '@/lib/types/auth';
+import { extractUserInfoFromToken, isTokenExpired } from '@/lib/utils/jwt';
 
 class AuthService {
   private readonly TOKEN_KEY = 'access_token';
@@ -50,9 +51,41 @@ class AuthService {
     localStorage.removeItem(this.USER_KEY);
   }
 
+  // Extract user information from JWT token
+  extractUserInfoFromToken(): UserInfo | null {
+    const token = this.getAccessToken();
+    if (!token) {
+      return null;
+    }
+
+    // Check if token is expired
+    if (isTokenExpired(token)) {
+      console.warn('Token is expired, cannot extract user info');
+      return null;
+    }
+
+    const extracted = extractUserInfoFromToken(token);
+    if (!extracted) {
+      return null;
+    }
+
+    // Create UserInfo object from extracted data
+    return {
+      id: extracted.id,
+      email: extracted.email,
+      name: '', // Name not typically in JWT, will be filled from API
+      roles: extracted.roles,
+      enabled: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      provider: 'local' // Default to local for JWT tokens
+    };
+  }
+
   // Check if user is authenticated
   isAuthenticated(): boolean {
-    return !!this.getAccessToken();
+    const token = this.getAccessToken();
+    return !!token && !isTokenExpired(token);
   }
 
   // Check if user is OAuth2 authenticated
@@ -140,6 +173,21 @@ class AuthService {
         error: error.response?.data?.message || 'Token refresh failed'
       };
     }
+  }
+
+  // Get user info with token extraction fallback
+  getUserInfoWithFallback(): UserInfo | null {
+    let userInfo = this.getUserInfo();
+    
+    // If no user info in localStorage, try to extract from token
+    if (!userInfo) {
+      userInfo = this.extractUserInfoFromToken();
+      if (userInfo) {
+        this.setUserInfo(userInfo);
+      }
+    }
+    
+    return userInfo;
   }
 
   // Get current user

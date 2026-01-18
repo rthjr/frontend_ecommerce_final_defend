@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 export default function LoginForm() {
   const router = useRouter();
   const { login, isLoading, error } = useAuth();
-  
+
   const [formData, setFormData] = useState<LoginRequest>({
     email: '',
     password: '',
@@ -39,7 +39,10 @@ export default function LoginForm() {
     try {
       await login(formData);
       toast.success('Login successful!');
-      router.push('/');
+
+      // Role-based redirect will be handled by RoleBasedRedirect component
+      // Just navigate to a generic page that will handle the redirect
+      router.push('/profile');
       router.refresh();
     } catch (error: any) {
       toast.error(error.message || 'Login failed');
@@ -49,14 +52,14 @@ export default function LoginForm() {
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card className="w-full max-w-md mx-auto container bg-white">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center">Sign In</CardTitle>
+        <CardTitle className="text-2xl font-bold text-center mt-3">Sign In</CardTitle>
         <CardDescription className="text-center">
           Enter your email and password to access your account
         </CardDescription>
       </CardHeader>
-      
+
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
           {error && (
@@ -64,7 +67,7 @@ export default function LoginForm() {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          
+
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -78,7 +81,7 @@ export default function LoginForm() {
               disabled={isSubmitting}
             />
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
             <div className="relative">
@@ -109,11 +112,11 @@ export default function LoginForm() {
             </div>
           </div>
         </CardContent>
-        
-        <CardFooter className="flex flex-col space-y-4">
-          <Button 
-            type="submit" 
-            className="w-full" 
+
+        <CardFooter className="flex flex-col space-y-4 mt-4">
+          <Button
+            type="submit"
+            className="w-full"
             disabled={isSubmitting || isLoading}
           >
             {isSubmitting || isLoading ? (
@@ -125,14 +128,13 @@ export default function LoginForm() {
               'Sign In'
             )}
           </Button>
-          
-          <div className="text-center text-sm">
-            <span className="text-muted-foreground">Don't have an account? </span>
-            <Link href="/register" className="text-primary hover:underline">
-              Sign up
+
+          <Button asChild className="w-full" variant="outline">
+            <Link href="/register" className="flex items-center justify-center">
+              Create Account
             </Link>
-          </div>
-          
+          </Button>
+
           <div className="text-center">
             <Link href="/forgot-password" className="text-sm text-primary hover:underline">
               Forgot your password?

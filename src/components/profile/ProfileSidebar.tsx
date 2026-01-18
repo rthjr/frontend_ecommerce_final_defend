@@ -6,10 +6,26 @@ import { User, Package, MapPin, Settings, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { authService } from '@/services';
 
 export default function ProfileSidebar() {
   const pathname = usePathname();
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, isLoading, logout } = useAuth();
+
+  // Fallback check for localStorage in case context hasn't initialized yet
+  const hasToken = authService.getAccessToken() !== null;
+  const shouldShowLogout = isAuthenticated || hasToken;
+
+  // Show loading state while auth is being initialized
+  if (isLoading && !hasToken) {
+    return (
+      <aside className="space-y-4">
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+        </div>
+      </aside>
+    );
+  }
 
   const handleLogout = async () => {
     try {
@@ -45,7 +61,7 @@ export default function ProfileSidebar() {
         ))}
         
         {/* Only show logout button if user is authenticated */}
-        {isAuthenticated && (
+        {shouldShowLogout && (
           <div className="pt-2 border-t">
             <Button
               variant="ghost"

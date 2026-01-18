@@ -24,7 +24,8 @@ export interface ProductRequest {
   price: number;
   category: string;
   imageUrl?: string;
-  stock: number;
+  stockQuantity: number;
+  active?: boolean;
   colors?: string[];
   sizes?: string[];
 }
@@ -36,11 +37,18 @@ export interface ProductResponse {
   price: number;
   category: string;
   imageUrl?: string;
-  stock: number;
+  stockQuantity: number;
+  active: boolean;
+  sellerId?: string;
+  sellerName?: string;
+  brand?: string;
+  rating?: number;
+  numReviews?: number;
+  discountPrice?: number;
+  imageUrls?: string[];
   colors?: string[];
   sizes?: string[];
-  averageRating?: number;
-  reviewCount?: number;
+  dressStyle?: string;
   createdAt: string;
   updatedAt: string;
 }

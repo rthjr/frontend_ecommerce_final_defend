@@ -23,11 +23,11 @@ export default function SearchPage() {
         let response;
         
         if (searchParams.get('keyword')) {
-          // Search by keyword
+          // Search by keyword (only active products)
           response = await productService.searchProducts(searchParams.get('keyword') || '');
         } else {
-          // Get all products and filter client-side
-          response = await productService.getAllProducts();
+          // Get all active products and filter client-side
+          response = await productService.getActiveProducts();
         }
         
         if (response.data) {
@@ -65,7 +65,7 @@ export default function SearchPage() {
               case 'price-high':
                 return b.price - a.price;
               case 'rating':
-                return (b.averageRating || 0) - (a.averageRating || 0);
+                return (b.rating || 0) - (a.rating || 0);
               case 'newest':
               default:
                 return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();

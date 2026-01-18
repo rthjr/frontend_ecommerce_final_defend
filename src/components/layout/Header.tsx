@@ -21,7 +21,7 @@ import { toast } from 'sonner';
 
 export default function Header() {
   const { items } = useAppSelector((state) => state.cart);
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, hasRole } = useAuth();
   const dispatch = useAppDispatch();
   const [mounted, setMounted] = useState(false);
 
@@ -42,7 +42,7 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-[1250px] mx-auto border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 ">
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-4">
           <Sheet>
@@ -66,12 +66,21 @@ export default function Header() {
                 <Link href="/cart" className="text-lg font-semibold">
                   Cart
                 </Link>
-                <Link href="/profile" className="text-lg font-semibold">
-                  Profile
-                </Link>
-                <Link href="/orders" className="text-lg font-semibold">
-                  My Orders
-                </Link>
+                {isAuthenticated && (
+                  <>
+                    <Link href="/profile" className="text-lg font-semibold">
+                      Profile
+                    </Link>
+                    <Link href="/orders" className="text-lg font-semibold">
+                      My Orders
+                    </Link>
+                    {(hasRole('ROLE_USER') || hasRole('ROLE_ADMIN')) && (
+                      <Link href="/my-products" className="text-lg font-semibold">
+                        My Products
+                      </Link>
+                    )}
+                  </>
+                )}
                 <Link href="/about" className="text-lg font-semibold">
                   About
                 </Link>
@@ -104,14 +113,20 @@ export default function Header() {
             <ShoppingBag className="h-4 w-4" />
             Cart
           </Link>
-          <Link href="/profile" className="flex items-center gap-2 text-sm font-medium hover:text-primary">
-            <UserCircle className="h-4 w-4" />
-            Profile
-          </Link>
-          <Link href="/orders" className="flex items-center gap-2 text-sm font-medium hover:text-primary">
-            <ClipboardList className="h-4 w-4" />
-            My Orders
-          </Link>
+          {isAuthenticated && (
+            <>
+              <Link href="/orders" className="flex items-center gap-2 text-sm font-medium hover:text-primary">
+                <ClipboardList className="h-4 w-4" />
+                My Orders
+              </Link>
+              {(hasRole('ROLE_USER') || hasRole('ROLE_ADMIN')) && (
+                <Link href="/my-products" className="flex items-center gap-2 text-sm font-medium hover:text-primary">
+                  <Package className="h-4 w-4" />
+                  My Products
+                </Link>
+              )}
+            </>
+          )}
         </nav>
 
         <div className="flex items-center gap-4">
@@ -121,15 +136,21 @@ export default function Header() {
 
           {isAuthenticated ? (
             <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <UserCircle className="h-5 w-5" />
+                  <span className="sr-only">Profile menu</span>
+                </Button>
+              </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <div className="px-2 py-1.5 text-sm font-medium">
-                  {user?.name}  // Shows user name
+                  {user?.name || user?.email}
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/profile" className="flex items-center">
                     <UserCircle className="mr-2 h-4 w-4" />
-                    Profile  // ✅ Profile button
+                    Profile
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
@@ -138,20 +159,28 @@ export default function Header() {
                     My Orders
                   </Link>
                 </DropdownMenuItem>
+                {(hasRole('ROLE_USER') || hasRole('ROLE_ADMIN')) && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/my-products" className="flex items-center">
+                      <Package className="mr-2 h-4 w-4" />
+                      My Products
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="flex items-center">
                   <LogOut className="mr-2 h-4 w-4" />
-                  Logout  // ✅ Logout button in profile
+                  Logout
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Link href="/profile">
-              <Button variant="ghost" size="icon">
-                <User className="h-5 w-5" />
-                <span className="sr-only">Account</span>
-              </Button>
-            </Link>
+            <Button variant="ghost" size="icon" asChild>
+              <Link href="/login">
+                <UserCircle className="h-5 w-5" />
+                <span className="sr-only">Login</span>
+              </Link>
+            </Button>
           )}
 
           <Button
