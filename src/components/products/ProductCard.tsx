@@ -35,6 +35,11 @@ interface ProductCardProps {
   product: ProductResponse | Product;
 }
 
+// Type guard function
+function isProductResponse(product: ProductResponse | Product): product is ProductResponse {
+  return 'stockQuantity' in product;
+}
+
 export default function ProductCard({ product }: ProductCardProps) {
   const dispatch = useAppDispatch();
 
@@ -42,13 +47,13 @@ export default function ProductCard({ product }: ProductCardProps) {
     e.preventDefault();
     
     // Get the correct ID (handle both old _id and new id)
-    const productId = product.id || (product as any)._id;
+    const productId = !isProductResponse(product) ? (product as any)._id : product.id;
     
     // Add to Redux cart
     dispatch(addToCart({
       productId: productId.toString(),
       name: product.name,
-      image: product.imageUrl || (product as any).images?.[0] || '/placeholder.png',
+      image: !isProductResponse(product) ? (product as any).images?.[0] || '/placeholder.png' : product.imageUrl || '/placeholder.png',
       price: product.price,
       quantity: 1,
       color: '',
@@ -65,9 +70,9 @@ export default function ProductCard({ product }: ProductCardProps) {
     <Card className="group relative overflow-hidden transition-all hover:shadow-lg">
       <CardContent className="p-0">
         <div className="relative aspect-square overflow-hidden bg-gray-100">
-          {product.imageUrl || (product as any).images?.[0] ? (
+          {!isProductResponse(product) ? (product as any).images?.[0] : product.imageUrl ? (
             <Image
-              src={product.imageUrl || (product as any).images[0]}
+              src={!isProductResponse(product) ? (product as any).images[0] : product.imageUrl}
               alt={product.name}
               fill
               className="object-cover transition-transform duration-300 group-hover:scale-105"
@@ -78,7 +83,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             </div>
           )}
           
-          {product.stock === 0 && (
+          {(!isProductResponse(product) ? product.stock : product.stockQuantity) === 0 && (
             <Badge className="absolute left-2 top-2 bg-red-500">
               Out of Stock
             </Badge>
@@ -94,9 +99,9 @@ export default function ProductCard({ product }: ProductCardProps) {
           </p>
           <div className="flex items-center justify-between">
             <span className="text-lg font-bold">${product.price.toFixed(2)}</span>
-            {(product.averageRating || (product as any).rating) && (
+            {(!isProductResponse(product) ? (product as any).averageRating || product.rating : product.rating) && (
               <div className="flex items-center text-sm text-yellow-500">
-                ★ {(product.averageRating || (product as any).rating).toFixed(1)}
+                ★ {(!isProductResponse(product) ? (product as any).averageRating || product.rating : product.rating)?.toFixed(1)}
               </div>
             )}
           </div>
@@ -109,20 +114,21 @@ export default function ProductCard({ product }: ProductCardProps) {
             className="flex-1"
             asChild
           >
-            <Link href={`/products/${product.id || (product as any)._id}`}>
+            <Link href={`/products/${!isProductResponse(product) ? (product as any)._id : product.id}`}>
               <Eye className="h-3 w-3 mr-1" />
               View
             </Link>
           </Button>
-          <Button
-            size="sm"
-            className="flex-1"
-            onClick={handleAddToCart}
-            disabled={product.stock === 0}
-          >
-            <ShoppingCart className="h-3 w-3 mr-1" />
-            Add
-          </Button>
+          {(!isProductResponse(product) ? product.stock : product.stockQuantity) > 0 && (
+            <Button
+              size="sm"
+              className="flex-1"
+              onClick={handleAddToCart}
+            >
+              <ShoppingCart className="h-3 w-3 mr-1" />
+              Add
+            </Button>
+          )}
         </div>
       </CardFooter>
     </Card>

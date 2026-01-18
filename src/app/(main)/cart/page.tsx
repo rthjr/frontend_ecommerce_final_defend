@@ -14,6 +14,13 @@ export default function CartPage() {
   const { items, itemsPrice, shippingPrice, taxPrice, totalPrice } = useAppSelector((state) => state.cart);
   const dispatch = useAppDispatch();
 
+  // Check if any items in cart are out of stock
+  const hasOutOfStockItems = items.some(item => {
+    // This would need to be checked against current product data
+    // For now, we'll assume items with quantity 0 are out of stock
+    return item.quantity <= 0;
+  });
+
   if (items.length === 0) {
     return (
       <div className="container flex min-h-[50vh] flex-col items-center justify-center gap-4 py-12">
@@ -22,6 +29,22 @@ export default function CartPage() {
         <Button asChild>
           <Link href="/products/search">Start Shopping</Link>
         </Button>
+      </div>
+    );
+  }
+
+  if (hasOutOfStockItems) {
+    return (
+      <div className="container flex min-h-[50vh] flex-col items-center justify-center gap-4 py-12">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-red-600 mb-4">Cart Contains Out-of-Stock Items</h1>
+          <p className="text-muted-foreground mb-6">
+            Some items in your cart are no longer available. Please remove them before proceeding to checkout.
+          </p>
+          <Button asChild>
+            <Link href="/cart">Review Cart</Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -130,9 +153,14 @@ export default function CartPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button className="w-full" size="lg" asChild>
+              <Button 
+                className="w-full" 
+                size="lg" 
+                asChild
+                disabled={hasOutOfStockItems}
+              >
                 <Link href="/checkout">
-                  Proceed to Checkout
+                  {hasOutOfStockItems ? 'Remove Out-of-Stock Items' : 'Proceed to Checkout'}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>

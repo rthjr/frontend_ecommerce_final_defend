@@ -5,7 +5,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { CreditCard, Wallet } from 'lucide-react';
+import { DollarSign, QrCode } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/lib/redux/store';
 import { savePaymentMethod } from '@/lib/redux/slices/cartSlice';
 
@@ -17,7 +17,7 @@ interface PaymentFormProps {
 export default function PaymentForm({ nextStep, prevStep }: PaymentFormProps) {
   const dispatch = useAppDispatch();
   const { paymentMethod } = useAppSelector((state) => state.cart);
-  const [selectedMethod, setSelectedMethod] = useState(paymentMethod || 'Stripe');
+  const [selectedMethod, setSelectedMethod] = useState(paymentMethod || 'Cash');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,20 +34,20 @@ export default function PaymentForm({ nextStep, prevStep }: PaymentFormProps) {
       >
         <div className="relative">
           <RadioGroupItem
-            value="Stripe"
-            id="stripe"
+            value="Cash"
+            id="cash"
             className="peer sr-only"
           />
           <Label
-            htmlFor="stripe"
+            htmlFor="cash"
             className="flex cursor-pointer items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
           >
             <div className="flex items-center gap-2">
-              <CreditCard className="h-6 w-6" />
+              <DollarSign className="h-6 w-6" />
               <div className="grid gap-1">
-                <span className="font-semibold">Credit Card</span>
+                <span className="font-semibold">Cash on Delivery</span>
                 <span className="text-sm text-muted-foreground">
-                  Pay securely with Stripe
+                  Pay when you receive your order
                 </span>
               </div>
             </div>
@@ -55,20 +55,20 @@ export default function PaymentForm({ nextStep, prevStep }: PaymentFormProps) {
         </div>
         <div className="relative">
           <RadioGroupItem
-            value="PayPal"
-            id="paypal"
+            value="QR"
+            id="qr"
             className="peer sr-only"
           />
           <Label
-            htmlFor="paypal"
+            htmlFor="qr"
             className="flex cursor-pointer items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
           >
             <div className="flex items-center gap-2">
-              <Wallet className="h-6 w-6" />
+              <QrCode className="h-6 w-6" />
               <div className="grid gap-1">
-                <span className="font-semibold">PayPal</span>
+                <span className="font-semibold">Bakong KHQR</span>
                 <span className="text-sm text-muted-foreground">
-                  Pay with your PayPal account
+                  Pay securely with Bakong QR code
                 </span>
               </div>
             </div>

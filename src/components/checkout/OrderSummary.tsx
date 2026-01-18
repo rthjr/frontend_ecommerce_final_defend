@@ -1,4 +1,6 @@
-import Image from 'next/image';
+'use client';
+
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -6,11 +8,8 @@ import { useAppSelector, useAppDispatch } from '@/lib/redux/store';
 import { clearCart } from '@/lib/redux/slices/cartSlice';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
-import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { PayPalButtons } from '@paypal/react-paypal-js';
-import { useCreateOrderMutation, usePayOrderMutation } from '@/lib/redux/api/ordersApi';
+import { Loader2, DollarSign, QrCode } from 'lucide-react';
+import QRPayment from './QRPayment';
 
 interface OrderSummaryProps {
   prevStep: () => void;
@@ -21,83 +20,67 @@ export default function OrderSummary({ prevStep }: OrderSummaryProps) {
   const dispatch = useAppDispatch();
   const { items, shippingAddress, paymentMethod, itemsPrice, shippingPrice, taxPrice, totalPrice } = useAppSelector((state) => state.cart);
   const [isLoading, setIsLoading] = useState(false);
-  
-  const stripe = useStripe();
-  const elements = useElements();
-  
-  const [createOrder] = useCreateOrderMutation();
-  const [payOrder] = usePayOrderMutation();
+  const [showQRPayment, setShowQRPayment] = useState(false);
 
-  const handlePlaceOrder = async () => {
-    // For demo purposes, redirect to success page since payment processing isn't working yet
-    dispatch(clearCart());
-    router.push('/checkout/success');
-    toast.success('Order placed successfully (Demo)!');
-    return;
+  // Convert USD to KHR (assuming 1 USD = 4100 KHR)
+  const convertToKHR = (usdAmount: number) => {
+    return Math.round(usdAmount * 4100);
+  };
 
-    if (paymentMethod === 'Stripe') {
-      if (!stripe || !elements) {
-        return;
-      }
+  const totalAmountKHR = convertToKHR(totalPrice);
+
+  const handleCashPayment = async () => {
+    setIsLoading(true);
+    try {
+      // For cash payment, we just create the order and mark as pending
+      // In a real implementation, you would call your order creation API here
       
-      setIsLoading(true);
-      try {
-        // 1. Create Order (Backend creates from Cart)
-        const order = await createOrder().unwrap();
-        
-        // 2. Confirm Card Payment
-        // Assuming the backend returns a clientSecret in the order response or we need to call another endpoint
-        // For this implementation, we assume the order creation returns the clientSecret if Stripe is selected
-        // If not, we would need a separate 'createPaymentIntent' call.
-        // Let's assume order.clientSecret exists for simplicity or fallback to a mock.
-        
-        const clientSecret = order.clientSecret; 
-        
-        if (!clientSecret) {
-           // Fallback for demo/testing if no backend
-           dispatch(clearCart());
-           router.push('/checkout/success');
-           toast.success('Order placed successfully (Demo)!');
-           return;
-        }
-
-        const cardElement = elements.getElement(CardElement);
-        if (!cardElement) return;
-
-        const result = await stripe.confirmCardPayment(clientSecret, {
-          payment_method: {
-            card: cardElement,
-            billing_details: {
-              name: `${shippingAddress?.firstName} ${shippingAddress?.lastName}`,
-              email: 'user@example.com', // Should come from user state
-              address: {
-                line1: shippingAddress?.street,
-                city: shippingAddress?.city,
-                state: shippingAddress?.state,
-                postal_code: shippingAddress?.zipCode,
-                country: shippingAddress?.country,
-              },
-            },
-          },
-        });
-
-        if (result.error) {
-          toast.error(result.error.message);
-        } else {
-          if (result.paymentIntent.status === 'succeeded') {
-             await payOrder({ orderId: order._id!, details: { id: result.paymentIntent.id, status: result.paymentIntent.status, update_time: String(Date.now()), email_address: 'user@example.com' } });
-             dispatch(clearCart());
-             router.push('/checkout/success');
-             toast.success('Order placed successfully!');
-          }
-        }
-      } catch (error: any) {
-        toast.error(error?.data?.message || 'Failed to place order');
-      } finally {
-        setIsLoading(false);
-      }
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      dispatch(clearCart());
+      router.push('/checkout/success');
+      toast.success('Order placed successfully! Pay on delivery.');
+    } catch (error: any) {
+      toast.error('Failed to place order');
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  const handleQRPaymentComplete = (orderId: string) => {
+    dispatch(clearCart());
+    router.push('/checkout/success');
+    toast.success('Order placed successfully! Payment completed.');
+  };
+
+  const handlePlaceOrder = () => {
+    if (paymentMethod === 'Cash') {
+      handleCashPayment();
+    } else if (paymentMethod === 'QR') {
+      setShowQRPayment(true);
+    }
+  };
+
+  // Show QR Payment component if QR is selected
+  if (showQRPayment && paymentMethod === 'QR') {
+    return (
+      <div className="space-y-6">
+        <Button
+          variant="outline"
+          onClick={() => setShowQRPayment(false)}
+          className="mb-4"
+        >
+          ← Back to Order Summary
+        </Button>
+        <QRPayment
+          amount={totalAmountKHR}
+          onPaymentComplete={handleQRPaymentComplete}
+          onBack={() => setShowQRPayment(false)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -121,25 +104,25 @@ export default function OrderSummary({ prevStep }: OrderSummaryProps) {
             <CardTitle>Payment Method</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="font-medium mb-4">{paymentMethod}</p>
-            {paymentMethod === 'Stripe' && (
-               <div className="rounded-md border p-4">
-                 <CardElement options={{
-                   style: {
-                     base: {
-                       fontSize: '16px',
-                       color: '#424770',
-                       '::placeholder': {
-                         color: '#aab7c4',
-                       },
-                     },
-                     invalid: {
-                       color: '#9e2146',
-                     },
-                   },
-                 }} />
-               </div>
-            )}
+            <div className="flex items-center gap-2">
+              {paymentMethod === 'Cash' ? (
+                <>
+                  <DollarSign className="h-5 w-5" />
+                  <span className="font-medium">Cash on Delivery</span>
+                </>
+              ) : (
+                <>
+                  <QrCode className="h-5 w-5" />
+                  <span className="font-medium">Bakong KHQR</span>
+                </>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground mt-2">
+              {paymentMethod === 'Cash' 
+                ? 'Pay when you receive your order' 
+                : 'Pay securely with Bakong QR code'
+              }
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -152,20 +135,22 @@ export default function OrderSummary({ prevStep }: OrderSummaryProps) {
           <div className="space-y-4">
             {items.map((item) => (
               <div key={item.productId} className="flex items-center gap-4">
-                <div className="relative h-16 w-16 overflow-hidden rounded-md border">
-                  <Image
+                <div className="relative h-16 w-16 overflow-hidden rounded-md border bg-white">
+                  <img
                     src={item.image}
                     alt={item.name}
-                    fill
-                    className="object-cover"
+                    className="h-full w-full object-cover"
                   />
                 </div>
                 <div className="flex-1">
                   <h4 className="font-medium">{item.name}</h4>
                   <p className="text-sm text-muted-foreground">
-                    {item.quantity} x ${item.price} = ${(item.quantity * item.price).toFixed(2)}
+                    {item.quantity} x ${item.price.toFixed(2)}
                   </p>
                 </div>
+                <span className="font-medium">
+                  ${(item.quantity * item.price).toFixed(2)}
+                </span>
               </div>
             ))}
           </div>
@@ -176,75 +161,71 @@ export default function OrderSummary({ prevStep }: OrderSummaryProps) {
         <CardHeader>
           <CardTitle>Order Summary</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Items</span>
-            <span>${itemsPrice}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Shipping</span>
-            <span>{shippingPrice === 0 ? 'Free' : `$${shippingPrice}`}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Tax</span>
-            <span>${taxPrice}</span>
-          </div>
-          <Separator className="my-2" />
-          <div className="flex justify-between text-lg font-bold">
-            <span>Total</span>
-            <span>${totalPrice}</span>
+        <CardContent>
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <span>Items ({items.length})</span>
+              <span>${itemsPrice.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Shipping</span>
+              <span>{shippingPrice === 0 ? 'Free' : `$${shippingPrice.toFixed(2)}`}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Tax</span>
+              <span>${taxPrice.toFixed(2)}</span>
+            </div>
+            <Separator />
+            <div className="flex justify-between text-lg font-bold">
+              <span>Total (USD)</span>
+              <span>${totalPrice.toFixed(2)}</span>
+            </div>
+            {paymentMethod === 'QR' && (
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Total (KHR)</span>
+                <span>{totalAmountKHR.toLocaleString()} KHR</span>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      <div className="flex gap-4">
-        <Button variant="outline" onClick={prevStep} className="w-full" disabled={isLoading}>
-          Back
-        </Button>
-        
-        {paymentMethod === 'PayPal' ? (
-          <div className="w-full">
-            <PayPalButtons
-              createOrder={async (data, actions) => {
-                try {
-                  const order = await createOrder().unwrap();
-                  return order.paypalOrderId || order._id; // Fallback to order ID if paypalOrderId not present
-                } catch (err) {
-                     router.push('/checkout/success');
-                  toast.error('Could not create PayPal order');
-                  throw err;
-                }
-              }}
-              onApprove={async (data, actions) => {
-                try {
-                   const details = await actions.order?.capture();
-                   // We need the order ID from our database, not just PayPal's
-                   // Ideally createOrder returned it.
-                   // For now, we might need to store it in state or refetch.
-                   // Or we can assume the backend handles the capture via webhook, but here we want to update UI.
-                   // Let's assume we call payOrder with the details.
-                   // Since we don't have the order ID easily here without state, let's assume createOrder saved it to a ref or we just use the one from data.
-                   
-                   // Simplified: Just redirect for now or call payOrder if we had the ID.
-                   dispatch(clearCart());
-                   router.push('/checkout/success');
-                   toast.success('Order placed successfully!');
-                } catch (err) {
-                  toast.error('Payment failed');
-                }
-              }}
-              onError={(err) => {
-                toast.error('PayPal error');
-              }}
-            />
-          </div>
-        ) : (
-          <Button onClick={handlePlaceOrder} className="w-full" disabled={isLoading || !stripe}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Place Order
-          </Button>
-        )}
-      </div>
+      <div className="flex flex-col sm:flex-row gap-3 mt-6">
+  {/* Back – secondary action */}
+  <Button
+    variant="outline"
+    onClick={prevStep}
+    disabled={isLoading}
+    className="flex items-center justify-center gap-2 sm:w-1/3"
+  >
+    ← Back
+  </Button>
+
+  {/* Primary action */}
+  <Button
+    onClick={handlePlaceOrder}
+    disabled={isLoading}
+    className="flex items-center justify-center gap-2 sm:w-2/3"
+  >
+    {isLoading ? (
+      <>
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Processing payment...
+      </>
+    ) : paymentMethod === 'QR' ? (
+      <>
+        <QrCode className="h-4 w-4" />
+        Generate QR Code
+      </>
+    ) : (
+      <>
+        <DollarSign className="h-4 w-4" />
+        Place Order
+      </>
+    )}
+  </Button>
+</div>
+
     </div>
   );
 }

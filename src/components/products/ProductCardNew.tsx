@@ -61,7 +61,7 @@ export function ProductCardNew({
           />
         ))}
         <span className="text-sm text-muted-foreground ml-1">
-          {rating.toFixed(1)} ({product.reviewCount || 0})
+          {rating.toFixed(1)} ({product.numReviews || 0})
         </span>
       </div>
     );
@@ -90,12 +90,12 @@ export function ProductCardNew({
           <div className="absolute top-2 right-2">
             <Badge variant="secondary">{product.category}</Badge>
           </div>
-          {product.stock <= 5 && product.stock > 0 && (
+          {product.stockQuantity <= 5 && product.stockQuantity > 0 && (
             <div className="absolute top-2 left-2">
               <Badge variant="destructive">Low Stock</Badge>
             </div>
           )}
-          {product.stock === 0 && (
+          {product.stockQuantity === 0 && (
             <div className="absolute top-2 left-2">
               <Badge variant="destructive">Out of Stock</Badge>
             </div>
@@ -115,13 +115,13 @@ export function ProductCardNew({
               ${product.price.toFixed(2)}
             </span>
             <span className="text-sm text-muted-foreground">
-              Stock: {product.stock}
+              Stock: {product.stockQuantity}
             </span>
           </div>
 
-          {product.averageRating && (
+          {product.rating && (
             <div className="flex items-center">
-              {renderStars(product.averageRating)}
+              {renderStars(product.rating)}
             </div>
           )}
 
@@ -161,7 +161,7 @@ export function ProductCardNew({
               View
             </Button>
             
-            {!isAdmin && product.stock > 0 && (
+            {product.stockQuantity > 0 && (
               <Button
                 size="sm"
                 onClick={handleAddToCart}

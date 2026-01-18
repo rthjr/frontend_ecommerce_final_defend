@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, CreditCard, MapPin, ShoppingCart } from 'lucide-react';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements } from '@stripe/react-stripe-js';
+import { Check, DollarSign, QrCode, MapPin, ShoppingCart } from 'lucide-react';
 import ShippingForm from '@/components/checkout/ShippingForm';
 import PaymentForm from '@/components/checkout/PaymentForm';
 import OrderSummary from '@/components/checkout/OrderSummary';
@@ -13,13 +11,9 @@ import { Card, CardContent } from '@/components/ui/card';
 
 const steps = [
   { id: 1, name: 'Shipping', icon: MapPin, description: 'Delivery address' },
-  { id: 2, name: 'Payment', icon: CreditCard, description: 'Payment method' },
+  { id: 2, name: 'Payment', icon: DollarSign, description: 'Payment method' },
   { id: 3, name: 'Review', icon: Check, description: 'Confirm order' },
 ];
-
-import { PayPalScriptProvider } from '@paypal/react-paypal-js';
-
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -48,52 +42,37 @@ export default function CheckoutPage() {
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b">
         <div className="py-8">
-          <div className="text-center space-y-4">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <ShoppingCart className="h-6 w-6 text-primary" />
-              <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
-                Checkout
-              </h1>
-              <ShoppingCart className="h-6 w-6 text-primary" />
+          <div className="container mx-auto px-4">
+            <div className="flex items-center gap-3">
+              <ShoppingCart className="h-8 w-8 text-primary" />
+              <div>
+                <h1 className="text-3xl font-bold">Checkout</h1>
+                <p className="text-muted-foreground">Complete your order in a few simple steps</p>
+              </div>
             </div>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Complete your order in just a few simple steps
-            </p>
           </div>
         </div>
       </div>
 
-      <div className="container py-8 space-y-8">
+      <div className="container mx-auto px-4 py-8">
         {/* Progress Steps */}
-        <Card className="border-0 shadow-lg bg-white">
-          <CardContent className="p-8">
-            <div className="flex items-center justify-center flex-wrap gap-4">
+        <Card className="mb-8 border-0 shadow-sm bg-white/80 backdrop-blur">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
               {steps.map((step, index) => (
                 <div key={step.id} className="flex items-center">
-                  <div className="text-center">
+                  <div className="flex flex-col items-center text-center">
                     <div
-                      className={`flex h-12 w-12 items-center justify-center rounded-full border-2 transition-all duration-300 mx-auto mb-2 ${
+                      className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
                         currentStep >= step.id
-                          ? 'border-primary bg-primary text-primary-foreground shadow-lg'
-                          : 'border-muted bg-background text-muted-foreground'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground'
                       }`}
                     >
-                      <step.icon className="h-6 w-6" />
+                      <step.icon className="h-5 w-5" />
                     </div>
-                    <div>
-                      <span
-                        className={`font-semibold text-sm ${
-                          currentStep >= step.id ? 'text-foreground' : 'text-muted-foreground'
-                        }`}
-                      >
-                        {step.name}
-                      </span>
-                      <p className={`text-xs ${
-                        currentStep >= step.id ? 'text-primary' : 'text-muted-foreground'
-                      }`}>
-                        {step.description}
-                      </p>
-                    </div>
+                    <span className="mt-2 text-sm font-medium">{step.name}</span>
+                    <span className="text-xs text-muted-foreground">{step.description}</span>
                   </div>
                   {index < steps.length - 1 && (
                     <div
@@ -114,18 +93,9 @@ export default function CheckoutPage() {
           <div className="lg:col-span-2">
             <Card className="border-0 shadow-lg bg-white">
               <CardContent className="p-8">
-                <PayPalScriptProvider
-                  options={{
-                    clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || 'test',
-                    currency: 'USD',
-                  }}
-                >
-                  <Elements stripe={stripePromise}>
-                    {currentStep === 1 && <ShippingForm nextStep={nextStep} />}
-                    {currentStep === 2 && <PaymentForm nextStep={nextStep} prevStep={prevStep} />}
-                    {currentStep === 3 && <OrderSummary prevStep={prevStep} />}
-                  </Elements>
-                </PayPalScriptProvider>
+                {currentStep === 1 && <ShippingForm nextStep={nextStep} />}
+                {currentStep === 2 && <PaymentForm nextStep={nextStep} prevStep={prevStep} />}
+                {currentStep === 3 && <OrderSummary prevStep={prevStep} />}
               </CardContent>
             </Card>
           </div>
