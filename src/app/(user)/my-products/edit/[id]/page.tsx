@@ -111,15 +111,33 @@ export default function EditProductPage() {
     setFormData(prev => ({ ...prev, [name]: value || '' }));
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-        setFormData(prev => ({ ...prev, imageUrl: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+      try {
+        // Show preview immediately
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setImagePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+
+        // Upload to Cloudinary
+        setIsLoading(true);
+        const imageUrl = await productService.uploadImageToCloudinary(file);
+        
+        setFormData(prev => ({
+          ...prev,
+          imageUrl: imageUrl
+        }));
+        
+        toast.success('Image uploaded to Cloudinary successfully!');
+      } catch (error: any) {
+        toast.error(error.message || 'Failed to upload image to Cloudinary');
+        setImagePreview(null);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -338,18 +356,6 @@ export default function EditProductPage() {
                         </div>
                       )}
                     </div>
-                  </div>
-
-                  {/* Image URL Input */}
-                  <div className="space-y-2">
-                    <Label htmlFor="imageUrl">Or enter Image URL</Label>
-                    <Input
-                      id="imageUrl"
-                      name="imageUrl"
-                      value={formData.imageUrl}
-                      onChange={handleInputChange}
-                      placeholder="https://example.com/image.jpg"
-                    />
                   </div>
                 </div>
               </div>

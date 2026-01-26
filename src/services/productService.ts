@@ -1,5 +1,6 @@
 import { productApiClient, ApiResponse } from '@/lib/api';
 import { mockApiServer } from '@/lib/mockApiServer';
+import { uploadImageToCloudinaryAny } from '@/lib/cloudinaryUpload';
 import { 
   ProductRequest, 
   ProductResponse, 
@@ -199,6 +200,15 @@ export class ProductService {
 
   async createFAQ(productId: number, faqData: FAQRequest): Promise<ApiResponse<FAQResponse>> {
     return productApiClient.post<FAQResponse>(`/api/products/${productId}/faqs`, faqData);
+  }
+
+  async uploadImageToCloudinary(imageFile: File): Promise<string> {
+    try {
+      const imageUrl = await uploadImageToCloudinaryAny(imageFile, 'products');
+      return imageUrl;
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : 'Failed to upload image to Cloudinary');
+    }
   }
 }
 

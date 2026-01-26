@@ -121,8 +121,8 @@ export default function UserProductsPage() {
 
       const matchesStatus =
         status === 'all' ||
-        (status === 'active' && p.stockQuantity > 0) ||
-        (status === 'inactive' && p.stockQuantity === 0);
+        (status === 'active' && p.active) ||
+        (status === 'inactive' && !p.active);
 
       return matchesSearch && matchesStatus;
     });
@@ -138,8 +138,8 @@ export default function UserProductsPage() {
   const stats = useMemo(() => {
     return {
       total: totalItems,
-      active: products.filter((p) => p.stockQuantity > 0).length,
-      inactive: products.filter((p) => p.stockQuantity === 0).length,
+      active: products.filter((p) => p.active).length,
+      inactive: products.filter((p) => !p.active).length,
       lowStock: products.filter((p) => p.stockQuantity > 0 && p.stockQuantity <= 5).length,
     };
   }, [products]);
@@ -346,8 +346,8 @@ function ProductsSection({
                     </Badge>
                   </td>
                   <td className="p-3">
-                    <Badge variant={p.stockQuantity > 0 ? 'default' : 'destructive'}>
-                      {p.stockQuantity > 0 ? 'Active' : 'Inactive'}
+                    <Badge className={p.active ? "bg-green-100 text-green-800 border-green-200" : "bg-red-100 text-red-800 border-red-200"}>
+                      {p.active ? 'Active' : 'Inactive'}
                     </Badge>
                   </td>
                   <td className="p-3">
