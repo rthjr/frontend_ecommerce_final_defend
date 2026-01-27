@@ -1,12 +1,11 @@
-const PRODUCT_API_URL = process.env.NEXT_PUBLIC_PRODUCT_API_URL || 'http://localhost:8081';
-const ORDER_API_URL = process.env.NEXT_PUBLIC_ORDER_API_URL || 'http://localhost:8083';
-const USER_API_URL = process.env.NEXT_PUBLIC_USER_API_URL || 'http://localhost:8082';
+// Gateway URL - single entry point for all microservices
+const GATEWAY_API_URL = process.env.NEXT_PUBLIC_GATEWAY_API_URL || 'http://localhost:8080';
 
 // Ensure URLs are properly formatted
 const formatApiUrl = (url: string): string => {
   if (!url || url === 'undefined') {
     console.error('API URL is undefined! Check your .env.local file');
-    return 'http://localhost:8082'; // fallback
+    return 'http://localhost:8080'; // fallback to gateway
   }
   return url;
 };
@@ -45,11 +44,20 @@ class ApiClient {
       const status = response.status;
 
       if (!response.ok) {
+        // Try to extract a clean message from JSON responses
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          try {
+            const errJson: any = await response.json();
+            const message = errJson?.message || errJson?.error || errJson?.detail || `HTTP error! status: ${status}`;
+            return { error: String(message), status };
+          } catch {
+            // Fallback to text if JSON parsing fails
+          }
+        }
         const errorText = await response.text();
-        return {
-          error: errorText || `HTTP error! status: ${status}`,
-          status,
-        };
+        const message = errorText && errorText.startsWith('{') ? `HTTP error! status: ${status}` : errorText;
+        return { error: message || `HTTP error! status: ${status}`, status };
       }
 
       const data = await response.json();
@@ -123,8 +131,9 @@ class ApiClient {
   }
 }
 
-export const apiClient = new ApiClient(formatApiUrl(PRODUCT_API_URL));
-export const productApiClient = new ApiClient(formatApiUrl(PRODUCT_API_URL));
-export const orderApiClient = new ApiClient(formatApiUrl(ORDER_API_URL));
-export const userApiClient = new ApiClient(formatApiUrl(USER_API_URL));
+// All API clients now point to the gateway
+export const apiClient = new ApiClient(formatApiUrl(GATEWAY_API_URL));
+export const productApiClient = new ApiClient(formatApiUrl(GATEWAY_API_URL));
+export const orderApiClient = new ApiClient(formatApiUrl(GATEWAY_API_URL));
+export const userApiClient = new ApiClient(formatApiUrl(GATEWAY_API_URL));
 export default apiClient;

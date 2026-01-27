@@ -96,50 +96,32 @@ class AuthService {
 
   // Register new user
   async register(userData: RegisterRequest) {
-    try {
-      const response = await userApiClient.post<JwtResponse>('/api/auth/register', userData);
-      
-      if (response.data) {
-        this.setTokens(response.data.accessToken, response.data.refreshToken);
-        if (response.data.userInfo) {
-          this.setUserInfo(response.data.userInfo);
-        }
-      }
-      
-      return {
-        data: response.data,
-        error: null
-      };
-    } catch (error: any) {
-      return {
-        data: null,
-        error: error.response?.data?.message || 'Registration failed'
-      };
+    const response = await userApiClient.post<JwtResponse>('/api/auth/register', userData);
+    if (response.error) {
+      return { data: null, error: response.error, status: response.status };
     }
+    if (response.data) {
+      this.setTokens(response.data.accessToken, response.data.refreshToken);
+      if (response.data.userInfo) {
+        this.setUserInfo(response.data.userInfo);
+      }
+    }
+    return { data: response.data || null, error: null, status: response.status };
   }
 
   // Login user
   async login(credentials: LoginRequest) {
-    try {
-      const response = await userApiClient.post<JwtResponse>('/api/auth/login', credentials);
-      
-      if (response.data) {
-        this.setTokens(response.data.accessToken, response.data.refreshToken);
-        if (response.data.userInfo) {
-          this.setUserInfo(response.data.userInfo);
-        }
-      }
-      
-      return {
-        data: response.data,
-        error: null
-      };
-    } catch (error: any) {
-      return {
-        data: null,
-        error: error.response?.data?.message || 'Login failed'
-      };
+    const response = await userApiClient.post<JwtResponse>('/api/auth/login', credentials);
+    if (response.error) {
+      return { data: null, error: response.error, status: response.status };
     }
+    if (response.data) {
+      this.setTokens(response.data.accessToken, response.data.refreshToken);
+      if (response.data.userInfo) {
+        this.setUserInfo(response.data.userInfo);
+      }
+    }
+    return { data: response.data || null, error: null, status: response.status };
   }
 
   // Refresh access token
@@ -149,30 +131,20 @@ class AuthService {
       throw new Error('No refresh token available');
     }
 
-    try {
-      const response = await userApiClient.post<JwtResponse>('/api/auth/refresh', {
-        refreshToken
-      } as RefreshTokenRequest);
-      
-      if (response.data) {
-        this.setTokens(response.data.accessToken);
-        if (response.data.userInfo) {
-          this.setUserInfo(response.data.userInfo);
-        }
-      }
-      
-      return {
-        data: response.data,
-        error: null
-      };
-    } catch (error: any) {
-      // If refresh fails, clear auth data
+    const response = await userApiClient.post<JwtResponse>('/api/auth/refresh', {
+      refreshToken
+    } as RefreshTokenRequest);
+    if (response.error) {
       this.clearAuthData();
-      return {
-        data: null,
-        error: error.response?.data?.message || 'Token refresh failed'
-      };
+      return { data: null, error: response.error, status: response.status };
     }
+    if (response.data) {
+      this.setTokens(response.data.accessToken);
+      if (response.data.userInfo) {
+        this.setUserInfo(response.data.userInfo);
+      }
+    }
+    return { data: response.data || null, error: null, status: response.status };
   }
 
   // Get user info with token extraction fallback
@@ -192,24 +164,15 @@ class AuthService {
 
   // Get current user
   async getCurrentUser() {
-    try {
-      const authClient = userApiClient.withAuthToken();
-      const response = await authClient.get<UserInfo>('/api/auth/me');
-      
-      if (response.data) {
-        this.setUserInfo(response.data);
-      }
-      
-      return {
-        data: response.data,
-        error: null
-      };
-    } catch (error: any) {
-      return {
-        data: null,
-        error: error.response?.data?.message || 'Failed to get user info'
-      };
+    const authClient = userApiClient.withAuthToken();
+    const response = await authClient.get<UserInfo>('/api/auth/me');
+    if (response.error) {
+      return { data: null, error: response.error, status: response.status };
     }
+    if (response.data) {
+      this.setUserInfo(response.data);
+    }
+    return { data: response.data || null, error: null, status: response.status };
   }
 
   // Logout user (handles both JWT and OAuth2)
@@ -235,34 +198,20 @@ class AuthService {
 
   // Get OAuth2 providers
   async getOAuth2Providers() {
-    try {
-      const response = await userApiClient.get<OAuth2Providers>('/api/oauth2/providers');
-      return {
-        data: response.data,
-        error: null
-      };
-    } catch (error: any) {
-      return {
-        data: null,
-        error: error.response?.data?.message || 'Failed to get OAuth2 providers'
-      };
+    const response = await userApiClient.get<OAuth2Providers>('/api/oauth2/providers');
+    if (response.error) {
+      return { data: null, error: response.error, status: response.status };
     }
+    return { data: response.data || null, error: null, status: response.status };
   }
 
   // Get OAuth2 user info
   async getOAuth2UserInfo() {
-    try {
-      const response = await userApiClient.get<any>('/api/oauth2/user');
-      return {
-        data: response.data,
-        error: null
-      };
-    } catch (error: any) {
-      return {
-        data: null,
-        error: error.response?.data?.message || 'Failed to get OAuth2 user info'
-      };
+    const response = await userApiClient.get<any>('/api/oauth2/user');
+    if (response.error) {
+      return { data: null, error: response.error, status: response.status };
     }
+    return { data: response.data || null, error: null, status: response.status };
   }
 
   // OAuth2 logout

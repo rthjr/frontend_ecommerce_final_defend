@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { FormMessage } from '@/components/ui/FormMessage';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { LoginRequest } from '@/lib/types/auth';
@@ -23,6 +24,7 @@ export default function LoginForm() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -35,20 +37,23 @@ export default function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmitError(null);
 
     try {
       await login(formData);
       toast.success('Login successful!');
 
-      // Role-based redirect will be handled by RoleBasedRedirect component
-      // Just navigate to a generic page that will handle the redirect
+      // Only redirect on successful login
       router.push('/profile');
       router.refresh();
     } catch (error: any) {
-      toast.error(error.message || 'Login failed');
-    } finally {
+      // On failure, show a single inline error and stay on the login page
+      const message = error?.message || 'Login failed';
+      setSubmitError(message);
       setIsSubmitting(false);
     }
+    // Note: setIsSubmitting is intentionally NOT in finally block
+    // This keeps the form disabled during redirect on success
   };
 
   return (
@@ -62,11 +67,7 @@ export default function LoginForm() {
 
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+          {/* Keep global error hidden here; we show submitError under the button */}
 
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -113,7 +114,7 @@ export default function LoginForm() {
           </div>
         </CardContent>
 
-        <CardFooter className="flex flex-col space-y-4 mt-4">
+        <CardFooter className="flex flex-col space-y-2 mt-4">
           <Button
             type="submit"
             className="w-full"
@@ -128,6 +129,8 @@ export default function LoginForm() {
               'Sign In'
             )}
           </Button>
+
+          <FormMessage message={submitError} variant="error" />
 
           <Button asChild className="w-full" variant="outline">
             <Link href="/register" className="flex items-center justify-center">

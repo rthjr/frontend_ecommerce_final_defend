@@ -1,5 +1,5 @@
-import { apiClient } from '@/lib/api';
-import { UserRequest, UserResponse, ApiResponse } from '@/lib/types';
+import { userApiClient, ApiResponse } from '@/lib/api';
+import { UserRequest, UserResponse } from '@/lib/types';
 
 export class UserService {
   private static instance: UserService;
@@ -12,23 +12,23 @@ export class UserService {
   }
 
   async getAllUsers(): Promise<ApiResponse<UserResponse[]>> {
-    return apiClient.get<UserResponse[]>('/api/users');
+    return userApiClient.get<UserResponse[]>('/api/users');
   }
 
   async getUserById(id: string): Promise<ApiResponse<UserResponse>> {
-    return apiClient.get<UserResponse>(`/api/users/${id}`);
+    return userApiClient.get<UserResponse>(`/api/users/${id}`);
   }
 
   async createUser(userData: UserRequest): Promise<ApiResponse<string>> {
-    return apiClient.post<string>('/api/users', userData);
+    return userApiClient.post<string>('/api/users', userData);
   }
 
   async updateUser(id: string, userData: UserRequest): Promise<ApiResponse<string>> {
-    return apiClient.put<string>(`/api/users/${id}`, userData);
+    return userApiClient.put<string>(`/api/users/${id}`, userData);
   }
 
   async deleteUser(id: string): Promise<ApiResponse<void>> {
-    return apiClient.delete<void>(`/api/users/${id}`);
+    return userApiClient.delete<void>(`/api/users/${id}`);
   }
 }
 

@@ -132,7 +132,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     if (result.error) {
       dispatch({ type: 'AUTH_FAILURE', payload: result.error });
-      throw new Error(result.error);
+      throw { message: result.error, status: result.status } as any;
     } else if (result.data) {
       dispatch({
         type: 'AUTH_SUCCESS',
@@ -153,7 +153,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     if (result.error) {
       dispatch({ type: 'AUTH_FAILURE', payload: result.error });
-      throw new Error(result.error);
+      throw { message: result.error, status: result.status } as any;
     } else if (result.data) {
       dispatch({
         type: 'AUTH_SUCCESS',

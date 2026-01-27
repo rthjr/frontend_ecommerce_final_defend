@@ -1,5 +1,5 @@
-import { apiClient } from '@/lib/api';
-import { CartItemRequest, CartItemResponse, ApiResponse } from '@/lib/types';
+import { orderApiClient, ApiResponse } from '@/lib/api';
+import { CartItemRequest, CartItemResponse } from '@/lib/types';
 
 export class CartService {
   private static instance: CartService;
@@ -12,17 +12,17 @@ export class CartService {
   }
 
   async addToCart(userId: string, cartItem: CartItemRequest): Promise<ApiResponse<string>> {
-    const authClient = apiClient.withAuth(userId);
+    const authClient = orderApiClient.withAuth(userId);
     return authClient.post<string>('/api/cart', cartItem);
   }
 
   async getCart(userId: string): Promise<ApiResponse<CartItemResponse[]>> {
-    const authClient = apiClient.withAuth(userId);
+    const authClient = orderApiClient.withAuth(userId);
     return authClient.get<CartItemResponse[]>('/api/cart');
   }
 
   async removeFromCart(userId: string, productId: string): Promise<ApiResponse<void>> {
-    const authClient = apiClient.withAuth(userId);
+    const authClient = orderApiClient.withAuth(userId);
     return authClient.delete<void>(`/api/cart/items/${productId}`);
   }
 }

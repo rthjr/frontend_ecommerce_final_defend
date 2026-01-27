@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { FormMessage } from '@/components/ui/FormMessage';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { RegisterRequest } from '@/lib/types/auth';
@@ -26,6 +27,7 @@ export default function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -37,10 +39,12 @@ export default function RegisterForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
     
     // Validate passwords match
     if (formData.password !== confirmPassword) {
       toast.error('Passwords do not match');
+      setSubmitError('Passwords do not match');
       return;
     }
 
@@ -55,13 +59,18 @@ export default function RegisterForm() {
     try {
       await register(formData);
       toast.success('Registration successful!');
+      
+      // Only redirect on successful registration
       router.push('/');
       router.refresh();
     } catch (error: any) {
-      toast.error(error.message || 'Registration failed');
-    } finally {
+      // On failure, show a single inline error and stay on the registration page
+      const message = error?.message || 'Registration failed';
+      setSubmitError(message);
       setIsSubmitting(false);
     }
+    // Note: setIsSubmitting is intentionally NOT in finally block
+    // This keeps the form disabled during redirect on success
   };
 
   return (
@@ -75,11 +84,7 @@ export default function RegisterForm() {
       
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+          {/* Show specific submit error under the button instead */}
           
           <div className="space-y-2">
             <Label htmlFor="name">Full Name</Label>
@@ -170,7 +175,7 @@ export default function RegisterForm() {
           </div>
         </CardContent>
         
-        <CardFooter className="flex flex-col space-y-4">
+        <CardFooter className="flex flex-col space-y-2">
           <Button 
             type="submit" 
             className="w-full" 
@@ -185,6 +190,8 @@ export default function RegisterForm() {
               'Create Account'
             )}
           </Button>
+
+          <FormMessage message={submitError} variant="error" />
           
           <div className="text-center text-sm">
             <span className="text-muted-foreground">Already have an account? </span>
