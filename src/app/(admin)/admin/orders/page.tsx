@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 import { Eye, Search, Package, DollarSign, TrendingUp, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AdminRoute } from '@/components/auth/RoleBasedRoute';
 import {
   Table,
   TableBody,
@@ -26,6 +27,14 @@ import {
 import { useGetOrdersQuery } from '@/lib/redux/api/ordersApi';
 
 export default function AdminOrderListPage() {
+  return (
+    <AdminRoute>
+      <AdminOrderListContent />
+    </AdminRoute>
+  );
+}
+
+function AdminOrderListContent() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const { data: orders, isLoading, error } = useGetOrdersQuery();

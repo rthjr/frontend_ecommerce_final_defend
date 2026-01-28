@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import { Loader2, ArrowLeft, Truck, MapPin, CreditCard, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AdminRoute } from '@/components/auth/RoleBasedRoute';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +24,14 @@ interface OrderItem {
 }
 
 export default function AdminOrderDetailPage() {
+  return (
+    <AdminRoute>
+      <AdminOrderDetailContent />
+    </AdminRoute>
+  );
+}
+
+function AdminOrderDetailContent() {
   const params = useParams();
   const { id } = params;
 

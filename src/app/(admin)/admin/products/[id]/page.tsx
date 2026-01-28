@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
+import { AdminRoute } from '@/components/auth/RoleBasedRoute';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -35,6 +36,14 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 export default function AdminProductEditPage() {
+  return (
+    <AdminRoute>
+      <AdminProductEditContent />
+    </AdminRoute>
+  );
+}
+
+function AdminProductEditContent() {
   const params = useParams();
   const router = useRouter();
   const { id } = params;

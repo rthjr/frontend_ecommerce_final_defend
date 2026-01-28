@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Pencil, Trash2, Check, X, Search, Users as UsersIcon, UserCheck, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AdminRoute } from '@/components/auth/RoleBasedRoute';
 import {
   Table,
   TableBody,
@@ -19,6 +20,14 @@ import { useGetUsersQuery, useDeleteUserMutation } from '@/lib/redux/api/usersAp
 import { toast } from 'sonner';
 
 export default function AdminUserListPage() {
+  return (
+    <AdminRoute>
+      <AdminUserListContent />
+    </AdminRoute>
+  );
+}
+
+function AdminUserListContent() {
   const [searchTerm, setSearchTerm] = useState('');
   const { data: users, isLoading, error } = useGetUsersQuery();
   const [deleteUser, { isLoading: loadingDelete }] = useDeleteUserMutation();

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Plus, Pencil, Trash2, MoreHorizontal, Search, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AdminRoute } from '@/components/auth/RoleBasedRoute';
 import {
   Table,
   TableBody,
@@ -28,6 +29,14 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
 export default function AdminProductListPage() {
+  return (
+    <AdminRoute>
+      <AdminProductListContent />
+    </AdminRoute>
+  );
+}
+
+function AdminProductListContent() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const { data: products, isLoading, error } = useGetProductsQuery({});
