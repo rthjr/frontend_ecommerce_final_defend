@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ProductGrid from '@/components/products/ProductGrid';
 import ProductFilters from '@/components/products/ProductFilters';
@@ -9,9 +9,9 @@ import { productService } from '@/services';
 import { ProductResponse } from '@/lib/types';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Filter } from 'lucide-react';
+import { Filter, Loader2 } from 'lucide-react';
 
-export default function SearchPage() {
+function SearchContent() {
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<ProductResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,14 +98,18 @@ export default function SearchPage() {
           </SheetTrigger>
           <SheetContent side="left" className="w-[300px] sm:w-[400px]">
             <div className="py-4">
-              <ProductFilters />
+              <Suspense fallback={<div className="animate-pulse h-64 bg-muted rounded-lg" />}>
+                <ProductFilters />
+              </Suspense>
             </div>
           </SheetContent>
         </Sheet>
 
         {/* Desktop Sidebar */}
         <aside className="hidden w-64 shrink-0 md:block">
-          <ProductFilters />
+          <Suspense fallback={<div className="animate-pulse h-64 bg-muted rounded-lg" />}>
+            <ProductFilters />
+          </Suspense>
         </aside>
 
         {/* Main Content */}
@@ -115,7 +119,9 @@ export default function SearchPage() {
               {products.length} Results
               {searchParams.get('keyword') && ` for "${searchParams.get('keyword')}"`}
             </h1>
-            <ProductSort />
+            <Suspense fallback={<div className="animate-pulse h-10 w-32 bg-muted rounded-lg" />}>
+              <ProductSort />
+            </Suspense>
           </div>
 
           {loading ? (
@@ -137,5 +143,23 @@ export default function SearchPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function SearchFallback() {
+  return (
+    <div className="container py-8">
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    </div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<SearchFallback />}>
+      <SearchContent />
+    </Suspense>
   );
 }

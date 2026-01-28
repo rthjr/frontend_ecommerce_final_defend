@@ -12,6 +12,16 @@ import { useGetOrderDetailsQuery, useDeliverOrderMutation } from '@/lib/redux/ap
 import { toast } from 'sonner';
 import Link from 'next/link';
 
+interface OrderItem {
+  productId: string;
+  name: string;
+  image: string;
+  price: number;
+  quantity: number;
+  color?: string;
+  size?: string;
+}
+
 export default function AdminOrderDetailPage() {
   const params = useParams();
   const { id } = params;
@@ -107,7 +117,7 @@ export default function AdminOrderDetailPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {order.orderItems.map((item, index) => (
+                {order.orderItems.map((item: OrderItem, index: number) => (
                   <div key={item.productId}>
                     <div className="flex gap-4">
                       <div className="relative h-20 w-20 overflow-hidden rounded-lg border bg-gray-100 shrink-0">
@@ -341,22 +351,6 @@ export default function AdminOrderDetailPage() {
             </CardContent>
           </Card>
         </div>
-      </div>
-    </div>
-  );
-}
-              <Button 
-                onClick={handleDeliver} 
-                className="w-full mt-4" 
-                disabled={loadingDeliver}
-              >
-                {loadingDeliver && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                <Truck className="mr-2 h-4 w-4" />
-                Mark as Delivered
-              </Button>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

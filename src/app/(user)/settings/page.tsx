@@ -13,10 +13,8 @@ export default function UserSettingsPage() {
   const { user, isUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    name: '',
     email: '',
-    phone: ''
   });
 
   useEffect(() => {
@@ -26,10 +24,8 @@ export default function UserSettingsPage() {
 
     if (user) {
       setFormData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
+        name: user.name || '',
         email: user.email || '',
-        phone: user.phone || ''
       });
     }
   }, [user, isUser]);
@@ -82,27 +78,15 @@ export default function UserSettingsPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input
-                      id="firstName"
-                      name="firstName"
-                      value={formData.firstName}
-                      onChange={handleInputChange}
-                      placeholder="Enter first name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input
-                      id="lastName"
-                      name="lastName"
-                      value={formData.lastName}
-                      onChange={handleInputChange}
-                      placeholder="Enter last name"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    placeholder="Enter your name"
+                  />
                 </div>
                 
                 <div className="space-y-2">
@@ -114,18 +98,9 @@ export default function UserSettingsPage() {
                     value={formData.email}
                     onChange={handleInputChange}
                     placeholder="Enter email"
+                    disabled
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    placeholder="Enter phone number"
-                  />
+                  <p className="text-xs text-muted-foreground">Email cannot be changed</p>
                 </div>
 
                 <Button type="submit" disabled={isLoading} className="w-full">

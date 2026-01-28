@@ -136,15 +136,15 @@ export default function ProductDetailPage() {
               <div className="flex items-center text-yellow-500">
                 <Star className="h-5 w-5 fill-current" />
                 <span className="ml-1 font-medium text-foreground">
-                  {product.averageRating || 0}
+                  {product.rating || 0}
                 </span>
                 <span className="ml-1 text-muted-foreground">
-                  ({product.reviewCount || 0} reviews)
+                  ({product.numReviews || 0} reviews)
                 </span>
               </div>
               <Separator orientation="vertical" className="h-5" />
               <span className="text-sm text-muted-foreground">
-                {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
+                {product.stockQuantity > 0 ? `${product.stockQuantity} in stock` : 'Out of stock'}
               </span>
             </div>
           </div>
@@ -224,7 +224,7 @@ export default function ProductDetailPage() {
             <Button
               className="flex-1"
               onClick={handleAddToCart}
-              disabled={product.stock === 0}
+              disabled={product.stockQuantity === 0}
             >
               <ShoppingCart className="h-4 w-4 mr-2" />
               Add to Cart
@@ -256,7 +256,7 @@ export default function ProductDetailPage() {
                 </div>
                 <div>
                   <span className="font-medium">Stock:</span>
-                  <span className="ml-2 text-muted-foreground">{product.stock}</span>
+                  <span className="ml-2 text-muted-foreground">{product.stockQuantity}</span>
                 </div>
               </div>
             </TabsContent>

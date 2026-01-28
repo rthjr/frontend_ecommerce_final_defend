@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { User, Package, MapPin, Settings, LogOut } from 'lucide-react';
@@ -11,9 +12,13 @@ import { authService } from '@/services';
 export default function ProfileSidebar() {
   const pathname = usePathname();
   const { isAuthenticated, isLoading, logout } = useAuth();
+  const [hasToken, setHasToken] = useState(false);
 
-  // Fallback check for localStorage in case context hasn't initialized yet
-  const hasToken = authService.getAccessToken() !== null;
+  // Check for token only on client side
+  useEffect(() => {
+    setHasToken(authService.getAccessToken() !== null);
+  }, []);
+
   const shouldShowLogout = isAuthenticated || hasToken;
 
   // Show loading state while auth is being initialized

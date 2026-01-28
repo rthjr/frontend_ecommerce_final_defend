@@ -182,11 +182,12 @@ export class MockApiServer {
       price: product.price,
       category: product.category,
       imageUrl: product.images?.[0],
-      stock: product.stock,
+      stockQuantity: product.stock,
       colors: product.colors,
       sizes: product.sizes,
-      averageRating: product.rating,
-      reviewCount: product.numReviews,
+      rating: product.rating,
+      numReviews: product.numReviews,
+      active: true,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt
     };

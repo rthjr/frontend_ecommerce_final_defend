@@ -15,7 +15,17 @@ import {
 } from '@/components/ui/form';
 import { useAppDispatch, useAppSelector } from '@/lib/redux/store';
 import { saveShippingAddress } from '@/lib/redux/slices/cartSlice';
-import { Address } from '@/lib/types';
+
+interface Address {
+  firstName: string;
+  lastName: string;
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  phone: string;
+}
 
 const formSchema = z.object({
   firstName: z.string().min(2, 'First name is required'),

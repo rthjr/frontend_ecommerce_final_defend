@@ -6,7 +6,7 @@ import FeaturedProducts from '@/components/products/FeaturedProducts';
 import CategoryGrid from '@/components/products/CategoryGrid';
 import ProductGrid from '@/components/products/ProductGrid';
 import Newsletter from '@/components/layout/Newsletter';
-import LoadingSpinner from '@/components/ui/loading-spinner';
+import { ProductGridSkeleton } from '@/components/ui/loading-state';
 import { productService, ProductResponse } from '@/services';
 import { toast } from 'sonner';
 
@@ -57,16 +57,22 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col">
       <Hero />
       
       {isLoading ? (
-        <LoadingSpinner />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <ProductGridSkeleton count={4} />
+        </div>
       ) : (
         <>
           <FeaturedProducts products={featuredProducts} />
           <CategoryGrid categories={mockCategories} />
-          <ProductGrid products={newArrivals} title="New Arrivals" />
+          <ProductGrid 
+            products={newArrivals} 
+            title="New Arrivals" 
+            subtitle="Fresh finds just dropped - grab them before they're gone"
+          />
         </>
       )}
       

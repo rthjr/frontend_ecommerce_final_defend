@@ -25,8 +25,10 @@ import Link from 'next/link';
 const formSchema = z.object({
   name: z.string().min(2, 'Name is required'),
   email: z.string().email('Invalid email address'),
-  isAdmin: z.boolean().default(false),
+  isAdmin: z.boolean(),
 });
+
+type FormValues = z.infer<typeof formSchema>;
 
 export default function AdminUserEditPage() {
   const params = useParams();
@@ -36,7 +38,7 @@ export default function AdminUserEditPage() {
   const { data: user, isLoading, error } = useGetUserDetailsQuery(id as string);
   const [updateUser, { isLoading: loadingUpdate }] = useUpdateUserMutation();
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
@@ -55,7 +57,7 @@ export default function AdminUserEditPage() {
     }
   }, [user, form]);
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: FormValues) => {
     try {
       await updateUser({
         id: id as string,

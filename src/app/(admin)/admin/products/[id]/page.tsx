@@ -24,13 +24,15 @@ import Link from 'next/link';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name is required'),
-  price: z.coerce.number().min(0, 'Price must be positive'),
+  price: z.number().min(0, 'Price must be positive'),
   image: z.string().min(1, 'Image is required'),
   brand: z.string().min(2, 'Brand is required'),
   category: z.string().min(2, 'Category is required'),
-  stock: z.coerce.number().min(0, 'Stock must be non-negative'),
+  stock: z.number().min(0, 'Stock must be non-negative'),
   description: z.string().min(10, 'Description is required'),
 });
+
+type FormValues = z.infer<typeof formSchema>;
 
 export default function AdminProductEditPage() {
   const params = useParams();
@@ -41,7 +43,7 @@ export default function AdminProductEditPage() {
   const [updateProduct, { isLoading: loadingUpdate }] = useUpdateProductMutation();
   const [uploadProductImage, { isLoading: loadingUpload }] = useUploadProductImageMutation();
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
@@ -68,7 +70,7 @@ export default function AdminProductEditPage() {
     }
   }, [product, form]);
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: FormValues) => {
     try {
       await updateProduct({
         _id: id as string,

@@ -57,16 +57,16 @@ export default function LoginForm() {
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto container bg-white">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center mt-3">Sign In</CardTitle>
-        <CardDescription className="text-center">
-          Enter your email and password to access your account
+    <Card className="w-full border-0 shadow-none bg-transparent">
+      <CardHeader className="space-y-2 px-0">
+        <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
+        <CardDescription>
+          Enter your credentials to access your account
         </CardDescription>
       </CardHeader>
 
       <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 px-0">
           {/* Keep global error hidden here; we show submitError under the button */}
 
           <div className="space-y-2">
@@ -75,16 +75,22 @@ export default function LoginForm() {
               id="email"
               name="email"
               type="email"
-              placeholder="Enter your email"
+              placeholder="name@example.com"
               value={formData.email}
               onChange={handleChange}
               required
               disabled={isSubmitting}
+              className="h-11"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Password</Label>
+              <Link href="/forgot-password" className="text-xs text-primary hover:underline">
+                Forgot password?
+              </Link>
+            </div>
             <div className="relative">
               <Input
                 id="password"
@@ -95,29 +101,30 @@ export default function LoginForm() {
                 onChange={handleChange}
                 required
                 disabled={isSubmitting}
+                className="h-11 pr-10"
               />
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                size="icon"
+                className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isSubmitting}
               >
                 {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
+                  <EyeOff className="h-4 w-4 text-muted-foreground" />
                 ) : (
-                  <Eye className="h-4 w-4" />
+                  <Eye className="h-4 w-4 text-muted-foreground" />
                 )}
               </Button>
             </div>
           </div>
         </CardContent>
 
-        <CardFooter className="flex flex-col space-y-2 mt-4">
+        <CardFooter className="flex flex-col gap-4 px-0 pt-2">
           <Button
             type="submit"
-            className="w-full"
+            className="w-full h-11"
             disabled={isSubmitting || isLoading}
           >
             {isSubmitting || isLoading ? (
@@ -132,17 +139,12 @@ export default function LoginForm() {
 
           <FormMessage message={submitError} variant="error" />
 
-          <Button asChild className="w-full" variant="outline">
-            <Link href="/register" className="flex items-center justify-center">
-              Create Account
+          <p className="text-center text-sm text-muted-foreground">
+            Don't have an account?{' '}
+            <Link href="/register" className="text-primary font-medium hover:underline">
+              Sign up
             </Link>
-          </Button>
-
-          <div className="text-center">
-            <Link href="/forgot-password" className="text-sm text-primary hover:underline">
-              Forgot your password?
-            </Link>
-          </div>
+          </p>
         </CardFooter>
       </form>
     </Card>

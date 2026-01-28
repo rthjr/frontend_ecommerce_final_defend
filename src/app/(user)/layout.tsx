@@ -25,11 +25,9 @@ export default function UserLayout({
   }
 
   return (
-    <div className="flex min-h-screen">
-      <div className="flex-1">
-        <main className="p-6">
-          {children}
-        </main>
+    <div className="min-h-screen bg-muted/30">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+        {children}
       </div>
     </div>
   );

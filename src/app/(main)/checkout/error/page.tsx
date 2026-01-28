@@ -1,11 +1,12 @@
 'use client';
 
+import { Suspense } from 'react';
 import Link from 'next/link';
-import { XCircle } from 'lucide-react';
+import { XCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSearchParams } from 'next/navigation';
 
-export default function CheckoutErrorPage() {
+function ErrorContent() {
   const searchParams = useSearchParams();
   const reason = searchParams.get('reason') || 'Something went wrong with your payment.';
 
@@ -27,5 +28,21 @@ export default function CheckoutErrorPage() {
         </Button>
       </div>
     </div>
+  );
+}
+
+function ErrorFallback() {
+  return (
+    <div className="container flex min-h-[60vh] items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+}
+
+export default function CheckoutErrorPage() {
+  return (
+    <Suspense fallback={<ErrorFallback />}>
+      <ErrorContent />
+    </Suspense>
   );
 }

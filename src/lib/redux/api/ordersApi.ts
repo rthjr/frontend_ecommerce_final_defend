@@ -1,5 +1,50 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { Order } from '@/lib/types';
+
+interface CartItem {
+  productId: string;
+  name: string;
+  image: string;
+  price: number;
+  quantity: number;
+  color?: string;
+  size?: string;
+}
+
+interface Address {
+  firstName: string;
+  lastName: string;
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  phone: string;
+}
+
+interface Order {
+  _id: string;
+  user: string;
+  orderItems: CartItem[];
+  shippingAddress: Address;
+  paymentMethod: string;
+  paymentResult?: {
+    id: string;
+    status: string;
+    update_time: string;
+    email_address: string;
+  };
+  itemsPrice: number;
+  taxPrice: number;
+  shippingPrice: number;
+  totalPrice: number;
+  isPaid: boolean;
+  paidAt?: string;
+  isDelivered: boolean;
+  deliveredAt?: string;
+  createdAt: string;
+  paypalOrderId?: string;
+  clientSecret?: string;
+}
 
 export const ordersApi = createApi({
   reducerPath: 'ordersApi',

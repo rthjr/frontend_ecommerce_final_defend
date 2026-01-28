@@ -1,5 +1,14 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { CartItem } from '@/lib/types';
+
+interface CartItem {
+  productId: string;
+  name: string;
+  image: string;
+  price: number;
+  quantity: number;
+  color?: string;
+  size?: string;
+}
 
 export const cartApi = createApi({
   reducerPath: 'cartApi',
