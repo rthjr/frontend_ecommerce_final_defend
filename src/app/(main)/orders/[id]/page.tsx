@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, Package, MapPin, CreditCard, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Package, MapPin, CreditCard, Loader2, AlertCircle, Truck, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -156,11 +156,12 @@ export default function OrderDetailsPage() {
 
   const badgeProps = getStatusBadgeProps(order.status);
 
-  // Calculate order summary
-  const subtotal = order.items?.reduce((sum, item) => sum + (item.totalPrice || item.price * item.quantity), 0) || 0;
-  const shipping: number = 0; // Could be from backend in future
-  const tax = subtotal * 0.1; // 10% tax estimate
-  const total = order.totalAmount || subtotal + shipping + tax;
+  // Use backend values when available, otherwise calculate
+  const itemsSubtotal = order.items?.reduce((sum, item) => sum + (item.totalPrice || item.price * item.quantity), 0) || 0;
+  const subtotal = order.itemsPrice ?? itemsSubtotal;
+  const shipping = order.shippingPrice ?? 0;
+  const tax = order.taxPrice ?? (subtotal * 0.1);
+  const total = order.totalAmount || (subtotal + shipping + tax);
 
   return (
     <div className="space-y-6">
@@ -257,7 +258,7 @@ export default function OrderDetailsPage() {
                 Order Status
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-4">
               <div className="flex items-center gap-2">
                 <Badge variant={badgeProps.variant} className={badgeProps.className}>
                   {order.status}
@@ -268,13 +269,65 @@ export default function OrderDetailsPage() {
                   Last updated: {formatDate(order.updatedAt)}
                 </p>
               )}
-              {order.paymentResult && (
-                <div className="mt-4 pt-4 border-t">
-                  <p className="text-sm font-medium">Payment Status</p>
-                  <p className="text-sm text-muted-foreground">
-                    {order.paymentResult.status}
-                  </p>
+              
+              {/* Order Timeline */}
+              <div className="space-y-3 pt-4 border-t">
+                <div className="flex items-center gap-3">
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${order.status !== 'CANCELLED' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                    <CheckCircle2 className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Order Placed</p>
+                    <p className="text-xs text-muted-foreground">{formatDate(order.createdAt)}</p>
+                  </div>
                 </div>
+                <div className="flex items-center gap-3">
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${order.isPaid ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                    <CreditCard className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Payment {order.isPaid ? 'Confirmed' : 'Pending'}</p>
+                    {order.paidAt && <p className="text-xs text-muted-foreground">{formatDate(order.paidAt)}</p>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${order.isDelivered ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                    <Truck className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Delivery {order.isDelivered ? 'Completed' : 'Pending'}</p>
+                    {order.deliveredAt && <p className="text-xs text-muted-foreground">{formatDate(order.deliveredAt)}</p>}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Shipping Address */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                Shipping Address
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {order.shippingAddress ? (
+                <div className="space-y-1 text-sm">
+                  <p className="font-medium">
+                    {order.shippingAddress.firstName} {order.shippingAddress.lastName}
+                  </p>
+                  <p className="text-muted-foreground">{order.shippingAddress.street}</p>
+                  <p className="text-muted-foreground">
+                    {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zipCode}
+                  </p>
+                  <p className="text-muted-foreground">{order.shippingAddress.country}</p>
+                  {order.shippingAddress.phone && (
+                    <p className="text-muted-foreground pt-2">📞 {order.shippingAddress.phone}</p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-sm">No shipping address available</p>
               )}
             </CardContent>
           </Card>
@@ -287,16 +340,38 @@ export default function OrderDetailsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {order.paymentResult ? (
-                <div className="space-y-1">
-                  <p className="text-sm">Payment ID: {order.paymentResult.paymentId}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Amount: ${order.paymentResult.amount?.toFixed(2)}
-                  </p>
+              <div className="space-y-3">
+                {order.paymentMethod && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Payment Method</p>
+                    <p className="text-sm font-medium capitalize">{order.paymentMethod}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm text-muted-foreground">Payment Status</p>
+                  <Badge variant={order.isPaid ? 'default' : 'secondary'} className={order.isPaid ? 'bg-green-600' : ''}>
+                    {order.isPaid ? 'Paid' : 'Pending'}
+                  </Badge>
                 </div>
-              ) : (
-                <p className="text-muted-foreground">Payment pending</p>
-              )}
+                {order.paymentResult && (
+                  <>
+                    <Separator />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Transaction ID</p>
+                      <p className="text-sm font-mono">{order.paymentResult.paymentId}</p>
+                    </div>
+                    {order.paymentResult.emailAddress && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Payer Email</p>
+                        <p className="text-sm">{order.paymentResult.emailAddress}</p>
+                      </div>
+                    )}
+                  </>
+                )}
+                {!order.paymentMethod && !order.paymentResult && (
+                  <p className="text-muted-foreground text-sm">Payment pending</p>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>

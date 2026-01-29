@@ -201,6 +201,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Refresh user data (for profile updates)
+  const refreshUser = async (): Promise<void> => {
+    const userInfo = authService.getUserInfoWithFallback();
+    if (userInfo) {
+      // Try to get fresh data from getCurrentUser
+      try {
+        await getCurrentUser();
+      } catch {
+        // If getCurrentUser fails, just update with local data
+        dispatch({ type: 'SET_USER', payload: userInfo });
+      }
+    }
+  };
+
   // OAuth2 login
   const loginWithOAuth2 = (provider: string): void => {
     // Redirect to OAuth2 provider
@@ -241,6 +255,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     refreshAccessToken,
     getCurrentUser,
+    refreshUser,
     loginWithOAuth2,
     hasRole,
     hasAnyRole,

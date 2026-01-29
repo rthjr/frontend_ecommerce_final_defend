@@ -3,22 +3,110 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Mail, ArrowRight, Gift, Bell, Percent } from 'lucide-react';
+import { Mail, ArrowRight, Gift, Bell, Percent, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+// Storage key for newsletter subscriptions
+const NEWSLETTER_STORAGE_KEY = 'newsletter_subscriptions';
+
+// Get subscriptions from localStorage
+const getSubscriptions = (): string[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const stored = localStorage.getItem(NEWSLETTER_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+// Save subscription to localStorage
+const saveSubscription = (email: string): boolean => {
+  if (typeof window === 'undefined') return false;
+  try {
+    const subscriptions = getSubscriptions();
+    if (subscriptions.includes(email.toLowerCase())) {
+      return false; // Already subscribed
+    }
+    subscriptions.push(email.toLowerCase());
+    localStorage.setItem(NEWSLETTER_STORAGE_KEY, JSON.stringify(subscriptions));
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+// Check if email is already subscribed
+const isSubscribed = (email: string): boolean => {
+  const subscriptions = getSubscriptions();
+  return subscriptions.includes(email.toLowerCase());
+};
+
+// Email validation regex
+const isValidEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
 
 export default function Newsletter() {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSubscribed, setHasSubscribed] = useState(false);
+
+  // Check if user has already subscribed (by checking localStorage for any subscription)
+  useEffect(() => {
+    const subscriptions = getSubscriptions();
+    if (subscriptions.length > 0) {
+      // Check if any common email patterns exist
+      const userEmail = typeof window !== 'undefined' ? localStorage.getItem('user_email') : null;
+      if (userEmail && isSubscribed(userEmail)) {
+        setHasSubscribed(true);
+      }
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate email
+    if (!email.trim()) {
+      toast.error('Please enter your email address');
+      return;
+    }
+    
+    if (!isValidEmail(email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    
+    // Check if already subscribed
+    if (isSubscribed(email)) {
+      toast.info('You\'re already subscribed! We\'ll keep you updated.');
+      setEmail('');
+      setHasSubscribed(true);
+      return;
+    }
+    
     setIsSubmitting(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 800));
     
-    toast.success('Thanks for subscribing! Check your inbox for a welcome gift.');
+    // Save subscription
+    const saved = saveSubscription(email);
+    
+    if (saved) {
+      toast.success('Thanks for subscribing! Check your inbox for a welcome gift.', {
+        icon: <CheckCircle className="h-5 w-5 text-green-500" />,
+      });
+      setHasSubscribed(true);
+      // Store user email for future reference
+      localStorage.setItem('user_email', email.toLowerCase());
+    } else {
+      toast.error('Something went wrong. Please try again.');
+    }
+    
     setEmail('');
     setIsSubmitting(false);
   };

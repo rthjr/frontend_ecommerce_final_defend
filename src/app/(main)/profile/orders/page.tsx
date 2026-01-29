@@ -18,21 +18,28 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { orderService } from '@/services';
 import { OrderResponse } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function OrdersPage() {
+  const { user, isAuthenticated } = useAuth();
   const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchOrders = async () => {
+      if (!isAuthenticated || !user) {
+        setLoading(false);
+        return;
+      }
+      
       try {
-        // For demo purposes, use a fixed user ID
-        const response = await orderService.getUserOrders('user1');
+        // Use authenticated user's ID
+        const response = await orderService.getUserOrders(user.id);
         if (response.data) {
           setOrders(response.data);
         }
-      } catch (err) {
+      } catch {
         setError('Failed to load orders');
       } finally {
         setLoading(false);
@@ -40,7 +47,24 @@ export default function OrdersPage() {
     };
 
     fetchOrders();
-  }, []);
+  }, [user, isAuthenticated]);
+
+  if (!isAuthenticated || !user) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+          <AlertCircle className="h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-4 text-lg font-semibold">Not Logged In</h3>
+          <p className="mb-4 text-muted-foreground">
+            Please log in to view your orders.
+          </p>
+          <Button asChild>
+            <Link href="/login?redirect=/profile/orders">Login</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (loading) {
     return (
@@ -77,7 +101,7 @@ export default function OrdersPage() {
             <Package className="h-12 w-12 text-muted-foreground" />
             <h3 className="mt-4 text-lg font-semibold">No orders found</h3>
             <p className="mb-4 text-muted-foreground">
-              You haven't placed any orders yet.
+              You haven&apos;t placed any orders yet.
             </p>
             <Button asChild>
               <Link href="/products/search">Start Shopping</Link>
@@ -131,7 +155,7 @@ export default function OrdersPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/profile/orders/${order.id}`}>
+                        <Link href={`/orders/${order.id}`}>
                           Details
                         </Link>
                       </Button>

@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Loader2, DollarSign, QrCode } from 'lucide-react';
 import QRPayment from './QRPayment';
+import { useCreateOrderMutation } from '@/lib/redux/api/ordersApi';
 
 interface OrderSummaryProps {
   prevStep: () => void;
@@ -21,6 +22,7 @@ export default function OrderSummary({ prevStep }: OrderSummaryProps) {
   const { items, shippingAddress, paymentMethod, itemsPrice, shippingPrice, taxPrice, totalPrice } = useAppSelector((state) => state.cart);
   const [isLoading, setIsLoading] = useState(false);
   const [showQRPayment, setShowQRPayment] = useState(false);
+  const [createOrder] = useCreateOrderMutation();
 
   // Convert USD to KHR (assuming 1 USD = 4100 KHR)
   const convertToKHR = (usdAmount: number) => {
@@ -32,25 +34,23 @@ export default function OrderSummary({ prevStep }: OrderSummaryProps) {
   const handleCashPayment = async () => {
     setIsLoading(true);
     try {
-      // For cash payment, we just create the order and mark as pending
-      // In a real implementation, you would call your order creation API here
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Create order via API
+      const order = await createOrder().unwrap();
       
       dispatch(clearCart());
-      router.push('/checkout/success');
+      router.push(`/checkout/success?orderId=${order._id}`);
       toast.success('Order placed successfully! Pay on delivery.');
     } catch (error: any) {
-      toast.error('Failed to place order');
+      console.error('Order creation failed:', error);
+      toast.error(error?.data?.message || 'Failed to place order. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleQRPaymentComplete = (orderId: string) => {
+  const handleQRPaymentComplete = async (orderId: string) => {
     dispatch(clearCart());
-    router.push('/checkout/success');
+    router.push(`/checkout/success?orderId=${orderId}`);
     toast.success('Order placed successfully! Payment completed.');
   };
 

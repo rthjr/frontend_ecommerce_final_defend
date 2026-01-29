@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Pencil, Trash2, Check, X, Search, Users as UsersIcon, UserCheck, Shield } from 'lucide-react';
+import { Pencil, Trash2, Check, X, Search, Users as UsersIcon, UserCheck, Shield, Plus, Loader2, CheckSquare, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AdminRoute } from '@/components/auth/RoleBasedRoute';
 import {
@@ -13,11 +13,32 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Pagination } from '@/components/ui/pagination';
 import { useGetUsersQuery, useDeleteUserMutation } from '@/lib/redux/api/usersApi';
 import { toast } from 'sonner';
+
+const ITEMS_PER_PAGE_OPTIONS = [5, 10, 20, 50];
 
 export default function AdminUserListPage() {
   return (
@@ -29,7 +50,14 @@ export default function AdminUserListPage() {
 
 function AdminUserListContent() {
   const [searchTerm, setSearchTerm] = useState('');
-  const { data: users, isLoading, error } = useGetUsersQuery();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', isAdmin: false });
+  const [isCreating, setIsCreating] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  
+  const { data: users, isLoading, error, refetch } = useGetUsersQuery();
   const [deleteUser, { isLoading: loadingDelete }] = useDeleteUserMutation();
 
   const handleDeleteUser = async (id: string) => {
@@ -43,10 +71,156 @@ function AdminUserListContent() {
     }
   };
 
-  const filteredUsers = users?.filter(user =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    
+    // Filter out admin users from selection
+    const deletableUsers = selectedIds.filter(id => {
+      const user = users?.find(u => u._id === id);
+      return user && !user.isAdmin;
+    });
+
+    if (deletableUsers.length === 0) {
+      toast.error('Cannot delete admin users');
+      return;
+    }
+
+    if (window.confirm(`Are you sure you want to delete ${deletableUsers.length} user(s)? This action cannot be undone.`)) {
+      try {
+        let successCount = 0;
+        let failCount = 0;
+        
+        for (const id of deletableUsers) {
+          try {
+            await deleteUser(id).unwrap();
+            successCount++;
+          } catch {
+            failCount++;
+          }
+        }
+        
+        if (successCount > 0) {
+          toast.success(`Successfully deleted ${successCount} user(s)`);
+        }
+        if (failCount > 0) {
+          toast.error(`Failed to delete ${failCount} user(s)`);
+        }
+        
+        setSelectedIds([]);
+      } catch (err: any) {
+        toast.error('Bulk delete failed');
+      }
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.length === paginatedUsers.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(paginatedUsers.map(u => u._id));
+    }
+  };
+
+  const handleSelectOne = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) 
+        ? prev.filter(i => i !== id)
+        : [...prev, id]
+    );
+  };
+
+  const clearSelection = () => {
+    setSelectedIds([]);
+  };
+
+  const exportToCSV = () => {
+    const dataToExport = selectedIds.length > 0 
+      ? filteredUsers.filter(u => selectedIds.includes(u._id))
+      : filteredUsers;
+    
+    const headers = ['Name', 'Email', 'Role'];
+    const csvContent = [
+      headers.join(','),
+      ...dataToExport.map(u => [
+        `"${u.name.replace(/"/g, '""')}"`,
+        u.email,
+        u.isAdmin ? 'Admin' : 'Customer'
+      ].join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `users_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    toast.success(`Exported ${dataToExport.length} user(s) to CSV`);
+  };
+
+  const handleCreateUser = async () => {
+    if (!newUser.name || !newUser.email || !newUser.password) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    
+    setIsCreating(true);
+    try {
+      // Make API call to create user
+      const response = await fetch(`${process.env.NEXT_PUBLIC_USER_API_URL || 'http://localhost:8082/api'}/users/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newUser.name,
+          email: newUser.email,
+          password: newUser.password,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create user');
+      }
+      
+      toast.success('User created successfully');
+      setCreateDialogOpen(false);
+      setNewUser({ name: '', email: '', password: '', isAdmin: false });
+      refetch();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to create user');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const filteredUsers = useMemo(() => {
+    return users?.filter(user =>
+      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    ) || [];
+  }, [users, searchTerm]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredUsers.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredUsers, currentPage, itemsPerPage]);
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+    setSelectedIds([]);
+  };
+
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(Number(value));
+    setCurrentPage(1);
+    setSelectedIds([]);
+  };
+
+  const isAllSelected = paginatedUsers.length > 0 && selectedIds.length === paginatedUsers.length;
+  const isSomeSelected = selectedIds.length > 0 && selectedIds.length < paginatedUsers.length;
 
   const stats = {
     total: users?.length || 0,
@@ -74,9 +248,15 @@ function AdminUserListContent() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Users</h2>
-        <p className="text-muted-foreground">Manage user accounts and permissions</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Users</h2>
+          <p className="text-muted-foreground">Manage user accounts and permissions</p>
+        </div>
+        <Button variant="outline" onClick={exportToCSV}>
+          <Download className="mr-2 h-4 w-4" />
+          Export {selectedIds.length > 0 ? `(${selectedIds.length})` : 'All'}
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -110,8 +290,8 @@ function AdminUserListContent() {
         </Card>
       </div>
 
-      {/* Search */}
-      <div className="flex items-center gap-4">
+      {/* Search and Controls */}
+      <div className="flex flex-wrap items-center gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -119,9 +299,85 @@ function AdminUserListContent() {
             placeholder="Search users..."
             className="pl-8"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
           />
         </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Show</span>
+          <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
+            <SelectTrigger className="w-[70px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ITEMS_PER_PAGE_OPTIONS.map(option => (
+                <SelectItem key={option} value={option.toString()}>{option}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-muted-foreground">per page</span>
+        </div>
+        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="ml-auto">
+              <Plus className="mr-2 h-4 w-4" />
+              Create User
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New User</DialogTitle>
+              <DialogDescription>
+                Add a new user account to the system.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">Full Name</Label>
+                <Input
+                  id="name"
+                  placeholder="Enter full name"
+                  value={newUser.name}
+                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter email address"
+                  value={newUser.email}
+                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter password"
+                  value={newUser.password}
+                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateUser} disabled={isCreating}>
+                {isCreating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  'Create User'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Users Table */}
@@ -129,14 +385,57 @@ function AdminUserListContent() {
         <CardHeader>
           <CardTitle>All Users</CardTitle>
           <CardDescription>
-            {filteredUsers?.length || 0} user{filteredUsers?.length !== 1 ? 's' : ''} found
+            Showing {paginatedUsers.length} of {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''}
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Bulk Actions Bar */}
+          {selectedIds.length > 0 && (
+            <div className="flex items-center justify-between p-3 mb-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-2">
+                <CheckSquare className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-medium text-blue-800">
+                  {selectedIds.length} user{selectedIds.length !== 1 ? 's' : ''} selected
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  disabled={loadingDelete}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Selected
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearSelection}
+                >
+                  <X className="mr-2 h-4 w-4" />
+                  Clear
+                </Button>
+              </div>
+            </div>
+          )}
+          
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={isAllSelected}
+                      ref={(ref) => {
+                        if (ref) {
+                          (ref as any).indeterminate = isSomeSelected;
+                        }
+                      }}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
@@ -145,9 +444,18 @@ function AdminUserListContent() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredUsers && filteredUsers.length > 0 ? (
-                  filteredUsers.map((user) => (
-                    <TableRow key={user._id}>
+                {paginatedUsers.length > 0 ? (
+                  paginatedUsers.map((user) => {
+                    const isSelected = selectedIds.includes(user._id);
+                    return (
+                    <TableRow key={user._id} className={isSelected ? 'bg-blue-50' : ''}>
+                      <TableCell>
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => handleSelectOne(user._id)}
+                          aria-label={`Select ${user.name}`}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">{user.name}</TableCell>
                       <TableCell>{user.email}</TableCell>
                       <TableCell>
@@ -193,10 +501,11 @@ function AdminUserListContent() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))
+                    );
+                  })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={6} className="h-24 text-center">
                       <div className="flex flex-col items-center gap-2 text-muted-foreground">
                         <UsersIcon className="h-8 w-8" />
                         <p>No users found</p>
@@ -207,6 +516,20 @@ function AdminUserListContent() {
               </TableBody>
             </Table>
           </div>
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </p>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

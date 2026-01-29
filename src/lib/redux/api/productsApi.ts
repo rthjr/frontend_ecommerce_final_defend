@@ -14,6 +14,7 @@ interface Product {
   numReviews: number;
   colors?: string[];
   sizes?: string[];
+  active?: boolean;
   createdAt: string;
   updatedAt: string;
 }

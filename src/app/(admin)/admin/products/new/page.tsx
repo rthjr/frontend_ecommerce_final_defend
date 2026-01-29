@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -10,9 +10,6 @@ import { AdminRoute } from '@/components/auth/RoleBasedRoute';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import {
   Form,
   FormControl,
@@ -29,21 +26,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useGetProductByIdQuery, useUpdateProductMutation, useUploadProductImageMutation } from '@/lib/redux/api/productsApi';
+import { useCreateProductMutation, useUpdateProductMutation, useUploadProductImageMutation } from '@/lib/redux/api/productsApi';
 import { toast } from 'sonner';
-import { Loader2, ArrowLeft, X, Plus, ImageIcon } from 'lucide-react';
+import { Loader2, ArrowLeft, Upload, X, Plus, ImageIcon } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 
 const formSchema = z.object({
-  name: z.string().min(2, 'Name is required'),
-  price: z.number().min(0, 'Price must be positive'),
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  price: z.number().min(0.01, 'Price must be greater than 0'),
   discountPrice: z.number().optional(),
   brand: z.string().min(2, 'Brand is required'),
   category: z.string().min(2, 'Category is required'),
   stock: z.number().min(0, 'Stock must be non-negative'),
-  description: z.string().min(10, 'Description is required'),
-  active: z.boolean(),
+  description: z.string().min(10, 'Description must be at least 10 characters'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -69,29 +66,25 @@ const COMMON_SIZES = [
   'XS', 'S', 'M', 'L', 'XL', 'XXL', 'One Size'
 ];
 
-export default function AdminProductEditPage() {
+export default function AdminNewProductPage() {
   return (
     <AdminRoute>
-      <AdminProductEditContent />
+      <AdminNewProductContent />
     </AdminRoute>
   );
 }
 
-function AdminProductEditContent() {
-  const params = useParams();
+function AdminNewProductContent() {
   const router = useRouter();
-  const { id } = params;
-
-  const { data: product, isLoading, error } = useGetProductByIdQuery(id as string);
-  const [updateProduct, { isLoading: loadingUpdate }] = useUpdateProductMutation();
-  const [uploadProductImage, { isLoading: loadingUpload }] = useUploadProductImageMutation();
-
-  // State for arrays
   const [images, setImages] = useState<string[]>([]);
   const [colors, setColors] = useState<string[]>([]);
   const [sizes, setSizes] = useState<string[]>([]);
   const [newColor, setNewColor] = useState('');
   const [newSize, setNewSize] = useState('');
+
+  const [createProduct, { isLoading: loadingCreate }] = useCreateProductMutation();
+  const [updateProduct, { isLoading: loadingUpdate }] = useUpdateProductMutation();
+  const [uploadProductImage, { isLoading: loadingUpload }] = useUploadProductImageMutation();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -103,27 +96,8 @@ function AdminProductEditContent() {
       category: '',
       stock: 0,
       description: '',
-      active: true,
     },
   });
-
-  useEffect(() => {
-    if (product) {
-      form.reset({
-        name: product.name,
-        price: product.price,
-        discountPrice: product.discountPrice || undefined,
-        brand: product.brand,
-        category: product.category,
-        stock: product.stock,
-        description: product.description,
-        active: (product as any).active !== false,
-      });
-      setImages(product.images || []);
-      setColors(product.colors || []);
-      setSizes(product.sizes || []);
-    }
-  }, [product, form]);
 
   const onSubmit = async (values: FormValues) => {
     if (images.length === 0) {
@@ -132,17 +106,22 @@ function AdminProductEditContent() {
     }
 
     try {
+      // First create a product with defaults
+      const createdProduct = await createProduct().unwrap();
+      
+      // Then update it with the full form data
       await updateProduct({
-        _id: id as string,
+        _id: createdProduct._id,
         ...values,
         images: images,
         colors: colors,
         sizes: sizes,
       } as any).unwrap();
-      toast.success('Product updated successfully');
+
+      toast.success('Product created successfully');
       router.push('/admin/products');
-    } catch (err) {
-      toast.error('Failed to update product');
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to create product');
     }
   };
 
@@ -164,6 +143,7 @@ function AdminProductEditContent() {
       }
     }
     
+    // Reset input
     e.target.value = '';
   };
 
@@ -193,8 +173,7 @@ function AdminProductEditContent() {
     setSizes(prev => prev.filter(s => s !== size));
   };
 
-  if (isLoading) return <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin" /></div>;
-  if (error) return <div className="py-10 text-center text-red-500">Error loading product</div>;
+  const isLoading = loadingCreate || loadingUpdate;
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -204,25 +183,16 @@ function AdminProductEditContent() {
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <div className="flex-1">
-          <h2 className="text-2xl font-bold tracking-tight">Edit Product</h2>
-          <p className="text-muted-foreground">Update product details and inventory</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Label htmlFor="active-toggle" className="text-sm text-muted-foreground">
-            {form.watch('active') ? 'Active' : 'Inactive'}
-          </Label>
-          <Switch
-            id="active-toggle"
-            checked={form.watch('active')}
-            onCheckedChange={(checked) => form.setValue('active', checked)}
-          />
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Create New Product</h2>
+          <p className="text-muted-foreground">Add a new product to your inventory</p>
         </div>
       </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
+            {/* Basic Information */}
             <Card>
               <CardHeader>
                 <CardTitle>Basic Information</CardTitle>
@@ -263,7 +233,7 @@ function AdminProductEditContent() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Category</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a category" />
@@ -289,7 +259,11 @@ function AdminProductEditContent() {
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Describe the product..." rows={4} {...field} />
+                        <Textarea 
+                          placeholder="Describe the product..." 
+                          rows={4}
+                          {...field} 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -298,6 +272,7 @@ function AdminProductEditContent() {
               </CardContent>
             </Card>
 
+            {/* Pricing & Inventory */}
             <Card>
               <CardHeader>
                 <CardTitle>Pricing & Inventory</CardTitle>
@@ -364,91 +339,92 @@ function AdminProductEditContent() {
                     </FormItem>
                   )}
                 />
-
-                <div className="pt-4 border-t">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Product Status</Label>
-                      <p className="text-sm text-muted-foreground">
-                        {form.watch('active') ? 'Product is visible to customers' : 'Product is hidden from store'}
-                      </p>
-                    </div>
-                    <Badge variant={form.watch('active') ? 'default' : 'secondary'}>
-                      {form.watch('active') ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </div>
 
+          {/* Product Images */}
           <Card>
             <CardHeader>
               <CardTitle>Product Images</CardTitle>
-              <CardDescription>Upload multiple images for your product (at least one required)</CardDescription>
+              <CardDescription>Upload images for your product (at least one required)</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              <div className="grid gap-4 md:grid-cols-4">
                 {images.map((image, index) => (
-                  <div key={index} className="relative aspect-square rounded-lg overflow-hidden border group">
-                    <Image src={image} alt={`Product image ${index + 1}`} fill className="object-cover" />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <Button type="button" variant="destructive" size="icon" className="h-8 w-8" onClick={() => removeImage(index)}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    {index === 0 && (
-                      <div className="absolute top-2 left-2">
-                        <Badge variant="secondary" className="text-xs">Main</Badge>
-                      </div>
-                    )}
+                  <div key={index} className="relative aspect-square rounded-lg overflow-hidden border">
+                    <Image
+                      src={image}
+                      alt={`Product image ${index + 1}`}
+                      fill
+                      className="object-cover"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2 h-6 w-6"
+                      onClick={() => removeImage(index)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
                   </div>
                 ))}
                 <label className="flex flex-col items-center justify-center aspect-square rounded-lg border-2 border-dashed cursor-pointer hover:border-primary hover:bg-accent transition-colors">
-                  <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} disabled={loadingUpload} />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleImageUpload}
+                    disabled={loadingUpload}
+                  />
                   {loadingUpload ? (
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   ) : (
                     <>
                       <ImageIcon className="h-8 w-8 text-muted-foreground mb-2" />
-                      <span className="text-xs text-muted-foreground text-center px-2">Upload Image</span>
+                      <span className="text-sm text-muted-foreground">Upload Image</span>
                     </>
                   )}
                 </label>
               </div>
-              {images.length === 0 && <p className="text-sm text-destructive mt-2">At least one image is required</p>}
             </CardContent>
           </Card>
 
+          {/* Variants */}
           <div className="grid gap-6 md:grid-cols-2">
+            {/* Colors */}
             <Card>
               <CardHeader>
                 <CardTitle>Colors</CardTitle>
-                <CardDescription>Available color options for this product</CardDescription>
+                <CardDescription>Available color options</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex flex-wrap gap-2 min-h-[32px]">
-                  {colors.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No colors added</p>
-                  ) : (
-                    colors.map((color) => (
-                      <Badge key={color} variant="secondary" className="gap-1 pr-1">
-                        {color}
-                        <button type="button" onClick={() => removeColor(color)} className="ml-1 hover:text-destructive rounded-full">
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))
-                  )}
+                <div className="flex flex-wrap gap-2">
+                  {colors.map((color) => (
+                    <Badge key={color} variant="secondary" className="gap-1">
+                      {color}
+                      <button
+                        type="button"
+                        onClick={() => removeColor(color)}
+                        className="ml-1 hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
                 </div>
                 <div className="flex gap-2">
                   <Select value={newColor} onValueChange={setNewColor}>
                     <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Select a color" />
+                      <SelectValue placeholder="Select or type a color" />
                     </SelectTrigger>
                     <SelectContent>
                       {COMMON_COLORS.filter(c => !colors.includes(c)).map((color) => (
-                        <SelectItem key={color} value={color}>{color}</SelectItem>
+                        <SelectItem key={color} value={color}>
+                          {color}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -456,29 +432,37 @@ function AdminProductEditContent() {
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
-                <Input placeholder="Or type custom color" value={newColor} onChange={(e) => setNewColor(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addColor())} />
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Custom color name"
+                    value={newColor}
+                    onChange={(e) => setNewColor(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addColor())}
+                  />
+                </div>
               </CardContent>
             </Card>
 
+            {/* Sizes */}
             <Card>
               <CardHeader>
                 <CardTitle>Sizes</CardTitle>
-                <CardDescription>Available size options for this product</CardDescription>
+                <CardDescription>Available size options</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex flex-wrap gap-2 min-h-[32px]">
-                  {sizes.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No sizes added</p>
-                  ) : (
-                    sizes.map((size) => (
-                      <Badge key={size} variant="secondary" className="gap-1 pr-1">
-                        {size}
-                        <button type="button" onClick={() => removeSize(size)} className="ml-1 hover:text-destructive rounded-full">
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))
-                  )}
+                <div className="flex flex-wrap gap-2">
+                  {sizes.map((size) => (
+                    <Badge key={size} variant="secondary" className="gap-1">
+                      {size}
+                      <button
+                        type="button"
+                        onClick={() => removeSize(size)}
+                        className="ml-1 hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
                 </div>
                 <div className="flex gap-2">
                   <Select value={newSize} onValueChange={setNewSize}>
@@ -487,7 +471,9 @@ function AdminProductEditContent() {
                     </SelectTrigger>
                     <SelectContent>
                       {COMMON_SIZES.filter(s => !sizes.includes(s)).map((size) => (
-                        <SelectItem key={size} value={size}>{size}</SelectItem>
+                        <SelectItem key={size} value={size}>
+                          {size}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -495,23 +481,31 @@ function AdminProductEditContent() {
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
-                <Input placeholder="Or type custom size" value={newSize} onChange={(e) => setNewSize(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSize())} />
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Custom size"
+                    value={newSize}
+                    onChange={(e) => setNewSize(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSize())}
+                  />
+                </div>
               </CardContent>
             </Card>
           </div>
 
+          {/* Submit */}
           <div className="flex items-center justify-end gap-4">
             <Button type="button" variant="outline" asChild>
               <Link href="/admin/products">Cancel</Link>
             </Button>
-            <Button type="submit" disabled={loadingUpdate}>
-              {loadingUpdate ? (
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
+                  Creating...
                 </>
               ) : (
-                'Update Product'
+                'Create Product'
               )}
             </Button>
           </div>

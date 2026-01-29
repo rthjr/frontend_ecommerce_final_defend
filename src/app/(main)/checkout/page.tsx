@@ -25,9 +25,9 @@ export default function CheckoutPage() {
     if (items.length === 0) {
       router.push('/cart');
     }
-    // if (!userInfo) {
-    //   router.push('/login?redirect=/checkout');
-    // }
+    if (!userInfo) {
+      router.push('/login?redirect=/checkout');
+    }
   }, [items, router, userInfo]);
 
   const nextStep = () => setCurrentStep((prev) => Math.min(prev + 1, 3));

@@ -13,8 +13,42 @@ export interface UserResponse {
   email: string;
   address?: string;
   phone?: string;
+  avatar?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// Profile Types
+export interface ProfileUpdateRequest {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  avatar?: string;
+}
+
+export interface PasswordChangeRequest {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+// Address Types (Cambodia-specific)
+export interface AddressDTO {
+  id?: string;
+  label?: string;
+  isDefault?: boolean;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  street: string;
+  village?: string;
+  commune: string;
+  district: string;
+  province: string;
+  postalCode?: string;
+  country?: string;
+  additionalInfo?: string;
 }
 
 // Product Types
@@ -102,6 +136,19 @@ export interface PaymentResultDTO {
   paymentId: string;
   status: 'SUCCESS' | 'FAILED' | 'PENDING';
   amount: number;
+  updateTime?: string;
+  emailAddress?: string;
+}
+
+export interface ShippingAddressDTO {
+  firstName: string;
+  lastName: string;
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  phone?: string;
 }
 
 export interface OrderResponse {
@@ -110,9 +157,29 @@ export interface OrderResponse {
   items: CartItemResponse[];
   totalAmount: number;
   status: 'PENDING' | 'PAID' | 'DELIVERED' | 'CANCELLED';
+  
+  // Shipping Information
+  shippingAddress?: ShippingAddressDTO;
+  
+  // Payment Information
+  paymentMethod?: string;
+  paymentResult?: PaymentResultDTO;
+  
+  // Price Breakdown
+  itemsPrice?: number;
+  taxPrice?: number;
+  shippingPrice?: number;
+  
+  // Payment Status
+  isPaid?: boolean;
+  paidAt?: string;
+  
+  // Delivery Status
+  isDelivered?: boolean;
+  deliveredAt?: string;
+  
   createdAt: string;
   updatedAt: string;
-  paymentResult?: PaymentResultDTO;
 }
 
 // Filter Types

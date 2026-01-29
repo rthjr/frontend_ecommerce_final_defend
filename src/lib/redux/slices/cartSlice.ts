@@ -88,6 +88,10 @@ const cartSlice = createSlice({
     setCartOpen: (state, action: PayloadAction<boolean>) => {
       state.isOpen = action.payload;
     },
+    syncCartFromBackend: (state, action: PayloadAction<CartItem[]>) => {
+      state.items = action.payload;
+      cartSlice.caseReducers.calculatePrices(state);
+    },
     calculatePrices: (state) => {
       state.itemsPrice = Number(
         state.items.reduce((acc, item) => acc + item.price * item.quantity, 0).toFixed(2)
@@ -109,6 +113,7 @@ export const {
   savePaymentMethod,
   clearCart,
   setCartOpen,
+  syncCartFromBackend,
 } = cartSlice.actions;
 
 export default cartSlice.reducer;
