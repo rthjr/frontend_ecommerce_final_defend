@@ -35,7 +35,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Pagination } from '@/components/ui/pagination';
-import { useGetUsersQuery, useDeleteUserMutation } from '@/lib/redux/api/usersApi';
+import { useGetUsersQuery, useDeleteUserMutation, useCreateUserMutation } from '@/lib/redux/api/usersApi';
 import { toast } from 'sonner';
 
 const ITEMS_PER_PAGE_OPTIONS = [5, 10, 20, 50];
@@ -54,11 +54,11 @@ function AdminUserListContent() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', isAdmin: false });
-  const [isCreating, setIsCreating] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
-  const { data: users, isLoading, error, refetch } = useGetUsersQuery();
+  const { data: users, isLoading, error } = useGetUsersQuery();
   const [deleteUser, { isLoading: loadingDelete }] = useDeleteUserMutation();
+  const [createUser, { isLoading: isCreating }] = useCreateUserMutation();
 
   const handleDeleteUser = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
@@ -162,34 +162,18 @@ function AdminUserListContent() {
       return;
     }
     
-    setIsCreating(true);
     try {
-      // Make API call to create user
-      const response = await fetch(`${process.env.NEXT_PUBLIC_USER_API_URL || 'http://localhost:8082/api'}/users/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: newUser.name,
-          email: newUser.email,
-          password: newUser.password,
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create user');
-      }
+      await createUser({
+        name: newUser.name,
+        email: newUser.email,
+        password: newUser.password,
+      }).unwrap();
       
       toast.success('User created successfully');
       setCreateDialogOpen(false);
       setNewUser({ name: '', email: '', password: '', isAdmin: false });
-      refetch();
     } catch (err: any) {
-      toast.error(err.message || 'Failed to create user');
-    } finally {
-      setIsCreating(false);
+      toast.error(err?.data?.message || err.message || 'Failed to create user');
     }
   };
 

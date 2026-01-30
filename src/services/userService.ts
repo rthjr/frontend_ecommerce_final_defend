@@ -72,6 +72,112 @@ export class UserService {
   async setDefaultAddress(id: string): Promise<ApiResponse<AddressDTO>> {
     return userApiClient.withAuthToken().put<AddressDTO>(`/api/users/addresses/${id}/default`);
   }
+
+  // Account management endpoints
+  async deleteAccount(password: string, confirmDeletion: boolean, reason?: string): Promise<ApiResponse<{ message: string; success: boolean }>> {
+    return userApiClient.withAuthToken().delete<{ message: string; success: boolean }>('/api/users/profile', {
+      password,
+      confirmDeletion,
+      reason
+    });
+  }
+
+  async exportUserData(): Promise<ApiResponse<UserDataExport>> {
+    return userApiClient.withAuthToken().get<UserDataExport>('/api/users/profile/export');
+  }
+
+  // Session management endpoints
+  async getActiveSessions(): Promise<ApiResponse<SessionInfo[]>> {
+    const sessionToken = this.getStoredSessionToken();
+    const headers: Record<string, string> = {};
+    if (sessionToken) {
+      headers['X-Session-Token'] = sessionToken;
+    }
+    return userApiClient.withAuthToken().get<SessionInfo[]>('/api/auth/sessions', { headers });
+  }
+
+  async getLoginHistory(): Promise<ApiResponse<SessionInfo[]>> {
+    const sessionToken = this.getStoredSessionToken();
+    const headers: Record<string, string> = {};
+    if (sessionToken) {
+      headers['X-Session-Token'] = sessionToken;
+    }
+    return userApiClient.withAuthToken().get<SessionInfo[]>('/api/auth/sessions/history', { headers });
+  }
+
+  async terminateSession(sessionId: string): Promise<ApiResponse<{ message: string; success: boolean }>> {
+    return userApiClient.withAuthToken().delete<{ message: string; success: boolean }>(`/api/auth/sessions/${sessionId}`);
+  }
+
+  async terminateAllOtherSessions(): Promise<ApiResponse<{ message: string; count: number; success: boolean }>> {
+    const sessionToken = this.getStoredSessionToken();
+    const headers: Record<string, string> = {};
+    if (sessionToken) {
+      headers['X-Session-Token'] = sessionToken;
+    }
+    return userApiClient.withAuthToken().delete<{ message: string; count: number; success: boolean }>('/api/auth/sessions', undefined, { headers });
+  }
+
+  // Helper method to get stored session token
+  private getStoredSessionToken(): string | null {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('sessionToken');
+    }
+    return null;
+  }
+}
+
+// Types for user data export
+export interface UserDataExport {
+  profile: {
+    id: string;
+    name: string;
+    email: string;
+    phone?: string;
+    avatar?: string;
+    roles: string[];
+    createdAt: string;
+    updatedAt: string;
+  };
+  addresses: Array<{
+    id: string;
+    label: string;
+    recipientName: string;
+    phoneNumber: string;
+    streetAddress: string;
+    city: string;
+    province: string;
+    country: string;
+    postalCode: string;
+    isDefault: boolean;
+  }>;
+  accountMetadata: {
+    accountCreated: string;
+    lastLogin?: string;
+    accountStatus: string;
+    emailVerified: boolean;
+    twoFactorEnabled: boolean;
+  };
+  exportMetadata: {
+    exportedAt: string;
+    exportFormat: string;
+    exportVersion: string;
+    requestedBy: string;
+  };
+}
+
+// Types for session management
+export interface SessionInfo {
+  id: string;
+  deviceInfo: string;
+  browser: string;
+  operatingSystem: string;
+  ipAddress: string;
+  location?: string;
+  isCurrent: boolean;
+  isActive: boolean;
+  createdAt: string;
+  lastActivity: string;
 }
 
 export const userService = UserService.getInstance();

@@ -20,6 +20,7 @@ export interface JwtResponse {
   tokenType: string;
   expiresIn?: number;
   userInfo?: UserInfo;
+  sessionToken?: string; // For session management
 }
 
 export interface UserInfo {

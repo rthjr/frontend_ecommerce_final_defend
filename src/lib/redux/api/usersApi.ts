@@ -9,6 +9,24 @@ interface User {
   avatar?: string;
 }
 
+interface CreateUserRequest {
+  name: string;
+  email: string;
+  password: string;
+}
+
+interface CreateUserResponse {
+  accessToken: string;
+  refreshToken?: string;
+  tokenType: string;
+  userInfo?: {
+    id: string;
+    name: string;
+    email: string;
+    roles: string[];
+  };
+}
+
 export const usersApi = createApi({
   reducerPath: 'usersApi',
   baseQuery: fetchBaseQuery({ baseUrl: process.env.NEXT_PUBLIC_USER_API_URL || 'http://localhost:8082/api' }),
@@ -21,6 +39,14 @@ export const usersApi = createApi({
     getUserDetails: builder.query<User, string>({
       query: (id) => `/users/${id}`,
       providesTags: (result, error, id) => [{ type: 'User', id }],
+    }),
+    createUser: builder.mutation<CreateUserResponse, CreateUserRequest>({
+      query: (data) => ({
+        url: '/auth/register',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['User'],
     }),
     updateUser: builder.mutation<User, { id: string; data: Partial<User> }>({
       query: ({ id, data }) => ({
@@ -43,6 +69,7 @@ export const usersApi = createApi({
 export const {
   useGetUsersQuery,
   useGetUserDetailsQuery,
+  useCreateUserMutation,
   useUpdateUserMutation,
   useDeleteUserMutation,
 } = usersApi;

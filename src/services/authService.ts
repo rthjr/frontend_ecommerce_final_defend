@@ -13,14 +13,18 @@ class AuthService {
   private readonly TOKEN_KEY = 'access_token';
   private readonly REFRESH_TOKEN_KEY = 'refresh_token';
   private readonly USER_KEY = 'user_info';
+  private readonly SESSION_TOKEN_KEY = 'sessionToken';
 
   // Store tokens in localStorage
-  setTokens(accessToken: string, refreshToken?: string) {
+  setTokens(accessToken: string, refreshToken?: string, sessionToken?: string) {
     if (accessToken) {
       localStorage.setItem(this.TOKEN_KEY, accessToken);
     }
     if (refreshToken) {
       localStorage.setItem(this.REFRESH_TOKEN_KEY, refreshToken);
+    }
+    if (sessionToken) {
+      localStorage.setItem(this.SESSION_TOKEN_KEY, sessionToken);
     }
   }
 
@@ -31,6 +35,10 @@ class AuthService {
 
   getRefreshToken(): string | null {
     return localStorage.getItem(this.REFRESH_TOKEN_KEY);
+  }
+
+  getSessionToken(): string | null {
+    return localStorage.getItem(this.SESSION_TOKEN_KEY);
   }
 
   // Store user info
@@ -49,6 +57,7 @@ class AuthService {
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.REFRESH_TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
+    localStorage.removeItem(this.SESSION_TOKEN_KEY);
   }
 
   // Extract user information from JWT token
@@ -116,7 +125,7 @@ class AuthService {
       return { data: null, error: response.error, status: response.status };
     }
     if (response.data) {
-      this.setTokens(response.data.accessToken, response.data.refreshToken);
+      this.setTokens(response.data.accessToken, response.data.refreshToken, response.data.sessionToken);
       if (response.data.userInfo) {
         this.setUserInfo(response.data.userInfo);
       }
@@ -223,6 +232,41 @@ class AuthService {
     } finally {
       this.clearAuthData();
     }
+  }
+
+  // Forgot password - request password reset email
+  async forgotPassword(email: string) {
+    const response = await userApiClient.post<{ message: string; success: boolean }>(
+      '/api/auth/forgot-password',
+      { email }
+    );
+    if (response.error) {
+      return { data: null, error: response.error, status: response.status };
+    }
+    return { data: response.data || null, error: null, status: response.status };
+  }
+
+  // Validate reset token
+  async validateResetToken(token: string) {
+    const response = await userApiClient.get<{ valid: boolean; message: string }>(
+      `/api/auth/validate-reset-token?token=${token}`
+    );
+    if (response.error) {
+      return { data: null, error: response.error, status: response.status };
+    }
+    return { data: response.data || null, error: null, status: response.status };
+  }
+
+  // Reset password with token
+  async resetPassword(token: string, newPassword: string, confirmPassword: string) {
+    const response = await userApiClient.post<{ message: string; success: boolean }>(
+      '/api/auth/reset-password',
+      { token, newPassword, confirmPassword }
+    );
+    if (response.error) {
+      return { data: null, error: response.error, status: response.status };
+    }
+    return { data: response.data || null, error: null, status: response.status };
   }
 }
 

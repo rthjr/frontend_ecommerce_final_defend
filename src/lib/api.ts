@@ -104,9 +104,10 @@ class ApiClient {
     });
   }
 
-  async delete<T>(endpoint: string, headers?: Record<string, string>): Promise<ApiResponse<T>> {
+  async delete<T>(endpoint: string, data?: any, headers?: Record<string, string>): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'DELETE',
+      body: data ? JSON.stringify(data) : undefined,
       headers,
     });
   }
@@ -116,17 +117,22 @@ class ApiClient {
       get: <T>(endpoint: string) => this.get<T>(endpoint, { 'X-User-ID': userId }),
       post: <T>(endpoint: string, data?: any) => this.post<T>(endpoint, data, { 'X-User-ID': userId }),
       put: <T>(endpoint: string, data?: any) => this.put<T>(endpoint, data, { 'X-User-ID': userId }),
-      delete: <T>(endpoint: string) => this.delete<T>(endpoint, { 'X-User-ID': userId }),
+      delete: <T>(endpoint: string, data?: any) => this.delete<T>(endpoint, data, { 'X-User-ID': userId }),
     };
   }
 
   withAuthToken() {
     const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    const authHeader = { 'Authorization': `Bearer ${token}` };
     return {
-      get: <T>(endpoint: string) => this.get<T>(endpoint, { 'Authorization': `Bearer ${token}` }),
-      post: <T>(endpoint: string, data?: any) => this.post<T>(endpoint, data, { 'Authorization': `Bearer ${token}` }),
-      put: <T>(endpoint: string, data?: any) => this.put<T>(endpoint, data, { 'Authorization': `Bearer ${token}` }),
-      delete: <T>(endpoint: string) => this.delete<T>(endpoint, { 'Authorization': `Bearer ${token}` }),
+      get: <T>(endpoint: string, options?: { headers?: Record<string, string> }) => 
+        this.get<T>(endpoint, { ...authHeader, ...options?.headers }),
+      post: <T>(endpoint: string, data?: any, options?: { headers?: Record<string, string> }) => 
+        this.post<T>(endpoint, data, { ...authHeader, ...options?.headers }),
+      put: <T>(endpoint: string, data?: any, options?: { headers?: Record<string, string> }) => 
+        this.put<T>(endpoint, data, { ...authHeader, ...options?.headers }),
+      delete: <T>(endpoint: string, data?: any, options?: { headers?: Record<string, string> }) => 
+        this.delete<T>(endpoint, data, { ...authHeader, ...options?.headers }),
     };
   }
 }
