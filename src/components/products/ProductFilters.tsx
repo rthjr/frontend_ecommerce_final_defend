@@ -11,7 +11,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 const categories = ['Clothing', 'Electronics', 'Footwear', 'Accessories'];
 const sizes = ['S', 'M', 'L', 'XL', '2XL'];
@@ -23,14 +23,51 @@ export default function ProductFilters() {
   
   const [priceRange, setPriceRange] = useState([0, 1000]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
 
   useEffect(() => {
     // Sync state with URL params on mount
     const categoryParam = searchParams.get('category');
+    const sizeParam = searchParams.get('size');
+    const colorParam = searchParams.get('color');
+    const minPriceParam = searchParams.get('minPrice');
+    const maxPriceParam = searchParams.get('maxPrice');
+    
     if (categoryParam) {
       setSelectedCategories(categoryParam.split(','));
+    } else {
+      setSelectedCategories([]);
+    }
+    
+    if (sizeParam) {
+      setSelectedSizes(sizeParam.split(','));
+    } else {
+      setSelectedSizes([]);
+    }
+    
+    if (colorParam) {
+      setSelectedColors(colorParam.split(','));
+    } else {
+      setSelectedColors([]);
+    }
+    
+    if (minPriceParam && maxPriceParam) {
+      setPriceRange([Number(minPriceParam), Number(maxPriceParam)]);
     }
   }, [searchParams]);
+
+  const updateParams = useCallback((updates: Record<string, string>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+    });
+    router.push(`/products/search?${params.toString()}`);
+  }, [router, searchParams]);
 
   const handleCategoryChange = (category: string) => {
     const newCategories = selectedCategories.includes(category)
@@ -41,16 +78,22 @@ export default function ProductFilters() {
     updateParams({ category: newCategories.join(',') });
   };
 
-  const updateParams = (updates: Record<string, string>) => {
-    const params = new URLSearchParams(searchParams.toString());
-    Object.entries(updates).forEach(([key, value]) => {
-      if (value) {
-        params.set(key, value);
-      } else {
-        params.delete(key);
-      }
-    });
-    router.push(`/products/search?${params.toString()}`);
+  const handleSizeChange = (size: string) => {
+    const newSizes = selectedSizes.includes(size)
+      ? selectedSizes.filter((s) => s !== size)
+      : [...selectedSizes, size];
+    
+    setSelectedSizes(newSizes);
+    updateParams({ size: newSizes.join(',') });
+  };
+
+  const handleColorChange = (color: string) => {
+    const newColors = selectedColors.includes(color)
+      ? selectedColors.filter((c) => c !== color)
+      : [...selectedColors, color];
+    
+    setSelectedColors(newColors);
+    updateParams({ color: newColors.join(',') });
   };
 
   return (
@@ -112,7 +155,11 @@ export default function ProductFilters() {
             <div className="grid grid-cols-3 gap-2">
               {sizes.map((size) => (
                 <div key={size} className="flex items-center space-x-2">
-                  <Checkbox id={`size-${size}`} />
+                  <Checkbox 
+                    id={`size-${size}`} 
+                    checked={selectedSizes.includes(size)}
+                    onCheckedChange={() => handleSizeChange(size)}
+                  />
                   <Label htmlFor={`size-${size}`}>{size}</Label>
                 </div>
               ))}
@@ -126,7 +173,11 @@ export default function ProductFilters() {
             <div className="grid grid-cols-3 gap-2">
               {colors.map((color) => (
                 <div key={color} className="flex items-center space-x-2">
-                  <Checkbox id={`color-${color}`} />
+                  <Checkbox 
+                    id={`color-${color}`} 
+                    checked={selectedColors.includes(color)}
+                    onCheckedChange={() => handleColorChange(color)}
+                  />
                   <Label htmlFor={`color-${color}`}>{color}</Label>
                 </div>
               ))}

@@ -37,11 +37,15 @@ function SearchContent() {
           const category = searchParams.get('category');
           const minPrice = searchParams.get('minPrice');
           const maxPrice = searchParams.get('maxPrice');
+          const size = searchParams.get('size');
+          const color = searchParams.get('color');
           const sortBy = searchParams.get('sort') || 'newest';
           
+          // Filter by category (case-insensitive, supports multiple categories)
           if (category) {
+            const categoryList = category.split(',').map(c => c.toLowerCase().trim());
             filteredProducts = filteredProducts.filter(p => 
-              p.category.toLowerCase() === category.toLowerCase()
+              categoryList.some(cat => p.category?.toLowerCase() === cat)
             );
           }
           
@@ -55,6 +59,28 @@ function SearchContent() {
             filteredProducts = filteredProducts.filter(p => 
               p.price <= Number(maxPrice)
             );
+          }
+          
+          // Filter by size (case-insensitive, supports multiple sizes)
+          if (size) {
+            const sizeList = size.split(',').map(s => s.toLowerCase().trim());
+            filteredProducts = filteredProducts.filter(p => {
+              if (!p.sizes || p.sizes.length === 0) return false;
+              return p.sizes.some(productSize => 
+                sizeList.includes(productSize.toLowerCase())
+              );
+            });
+          }
+          
+          // Filter by color (case-insensitive, supports multiple colors)
+          if (color) {
+            const colorList = color.split(',').map(c => c.toLowerCase().trim());
+            filteredProducts = filteredProducts.filter(p => {
+              if (!p.colors || p.colors.length === 0) return false;
+              return p.colors.some(productColor => 
+                colorList.includes(productColor.toLowerCase())
+              );
+            });
           }
           
           // Apply sorting

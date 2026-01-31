@@ -67,9 +67,11 @@ export default function ProductsPage() {
       );
     }
 
-    // Filter by category
+    // Filter by category (case-insensitive)
     if (selectedCategory !== 'all') {
-      filtered = filtered.filter(product => product.category === selectedCategory);
+      filtered = filtered.filter(product => 
+        product.category?.toLowerCase() === selectedCategory.toLowerCase()
+      );
     }
 
     // Sort products
