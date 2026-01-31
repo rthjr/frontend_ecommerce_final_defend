@@ -7,6 +7,7 @@ import ShippingForm from '@/components/checkout/ShippingForm';
 import PaymentForm from '@/components/checkout/PaymentForm';
 import OrderSummary from '@/components/checkout/OrderSummary';
 import { useAppSelector } from '@/lib/redux/store';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 
 const steps = [
@@ -18,22 +19,22 @@ const steps = [
 export default function CheckoutPage() {
   const router = useRouter();
   const { items } = useAppSelector((state) => state.cart);
-  const { userInfo } = useAppSelector((state) => state.user);
+  const { isAuthenticated, user, isLoading } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
 
   useEffect(() => {
     if (items.length === 0) {
       router.push('/cart');
     }
-    if (!userInfo) {
+    if (!isLoading && !isAuthenticated) {
       router.push('/login?redirect=/checkout');
     }
-  }, [items, router, userInfo]);
+  }, [items, router, isAuthenticated, isLoading]);
 
   const nextStep = () => setCurrentStep((prev) => Math.min(prev + 1, 3));
   const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
 
-  if (items.length === 0) {
+  if (items.length === 0 || isLoading) {
     return null;
   }
 

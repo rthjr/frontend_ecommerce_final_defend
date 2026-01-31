@@ -7,6 +7,8 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { OAuth2Providers } from '@/lib/types/auth';
 
+const GATEWAY_API_URL = process.env.NEXT_PUBLIC_GATEWAY_API_URL || 'http://localhost:8080';
+
 interface OAuth2ButtonsProps {
   className?: string;
 }
@@ -19,7 +21,7 @@ export default function OAuth2Buttons({ className }: OAuth2ButtonsProps) {
   useEffect(() => {
     const fetchProviders = async () => {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_USER_API_URL}/api/oauth2/providers`);
+        const response = await fetch(`${GATEWAY_API_URL}/api/oauth2/providers`);
         if (response.ok) {
           const data = await response.json();
           setProviders(data);
