@@ -25,11 +25,6 @@ export default function FAQSection({ productId }: FAQSectionProps) {
       await createFAQ({
         productId,
         question,
-         // Similar to Review, sending generic userId if needed, or backend handles it.
-         // FAQRequest.java likely needs userId or just question.
-         // Let's assume just question for public or userId from context if available.
-         // Checking DTO: `FAQRequest` has `question` and `userId`.
-         userId: 1, // Fallback/Mock ID
       }).unwrap();
       
       toast.success('Question submitted successfully');

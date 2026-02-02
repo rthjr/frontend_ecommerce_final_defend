@@ -2,13 +2,13 @@
 
 import { Star } from 'lucide-react';
 import { useGetProductReviewsQuery } from '@/lib/redux/api/productsApi';
+import { ReviewResponse } from '@/lib/types';
 
 export default function ReviewList({ productId }: { productId: string }) {
   const { data: reviewsData, isLoading } = useGetProductReviewsQuery({ productId });
   
-  // Handle Page<ReviewResponse> or List structure
-  // @ts-ignore
-  const reviews = reviewsData?.content || reviewsData || [];
+  // Handle Page<ReviewResponse> - content property contains the array of reviews
+  const reviews: ReviewResponse[] = reviewsData?.content || [];
 
   if (isLoading) {
       return <div className="text-center text-muted-foreground">Loading reviews...</div>;

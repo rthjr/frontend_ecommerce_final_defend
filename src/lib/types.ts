@@ -90,22 +90,26 @@ export interface ProductResponse {
 // Review Types
 export interface ReviewRequest {
   rating: number;
-  comment: string;
+  content: string;
+  userId: number;
 }
 
 export interface ReviewResponse {
   id: number;
-  userId: string;
-  productId: number;
+  userId: number;
+  user: string;
+  content: string;
   rating: number;
-  comment: string;
-  createdAt: string;
+  date: string;
+  verifiedPurchase: boolean;
+  helpfulCount: number;
 }
 
 // FAQ Types
 export interface FAQRequest {
   question: string;
   answer: string;
+  order?: number;
 }
 
 export interface FAQResponse {
@@ -113,7 +117,7 @@ export interface FAQResponse {
   productId: number;
   question: string;
   answer: string;
-  createdAt: string;
+  order: number;
 }
 
 // Cart Types

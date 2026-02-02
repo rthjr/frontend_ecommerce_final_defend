@@ -25,13 +25,18 @@ export interface JwtResponse {
 
 export interface UserInfo {
   id: string;
+  _id?: string; // Alias for id
   name: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
+  phone?: string;
   roles: string[];
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
   provider?: string; // 'local' for JWT, 'google', 'github', 'facebook' for OAuth2
+  avatar?: string;
 }
 
 export interface OAuth2Provider {

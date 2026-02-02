@@ -203,13 +203,52 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Refresh user data (for profile updates)
   const refreshUser = async (): Promise<void> => {
-    const userInfo = authService.getUserInfoWithFallback();
-    if (userInfo) {
-      // Try to get fresh data from getCurrentUser
-      try {
-        await getCurrentUser();
-      } catch {
-        // If getCurrentUser fails, just update with local data
+    try {
+      // Fetch fresh user data from profile endpoint
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_GATEWAY_API_URL || 'http://localhost:8080'}/api/users/profile`,
+        {
+          headers: {
+            'Authorization': `Bearer ${authService.getAccessToken()}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      
+      if (response.ok) {
+        const userData = await response.json();
+        // Map backend UserResponse to UserInfo format
+        const userInfo = {
+          id: userData.id,
+          _id: userData.id,
+          name: userData.name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          email: userData.email,
+          phone: userData.phone,
+          roles: userData.role ? [userData.role] : (userData.roles || ['ROLE_CUSTOMER']),
+          enabled: true,
+          createdAt: userData.createdAt || new Date().toISOString(),
+          updatedAt: userData.updatedAt || new Date().toISOString(),
+          avatar: userData.avatar,
+          provider: authService.getUserInfo()?.provider || 'local',
+        };
+        
+        // Update localStorage and context
+        authService.setUserInfo(userInfo);
+        dispatch({ type: 'SET_USER', payload: userInfo });
+      } else {
+        // Fallback to local data if profile fetch fails
+        const userInfo = authService.getUserInfoWithFallback();
+        if (userInfo) {
+          dispatch({ type: 'SET_USER', payload: userInfo });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+      // Fallback to local data
+      const userInfo = authService.getUserInfoWithFallback();
+      if (userInfo) {
         dispatch({ type: 'SET_USER', payload: userInfo });
       }
     }

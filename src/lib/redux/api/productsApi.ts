@@ -1,4 +1,14 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { ReviewResponse, ReviewRequest, FAQResponse, FAQRequest } from '@/lib/types';
+
+// Paginated response type for reviews
+interface PaginatedReviewResponse {
+  content: ReviewResponse[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}
 
 interface Product {
   _id: string;
@@ -21,7 +31,7 @@ interface Product {
 
 export const productsApi = createApi({
   reducerPath: 'productsApi',
-  baseQuery: fetchBaseQuery({ baseUrl: process.env.NEXT_PUBLIC_PRODUCT_API_URL || 'http://localhost:8081/api' }),
+  baseQuery: fetchBaseQuery({ baseUrl: process.env.NEXT_PUBLIC_GATEWAY_API_URL ? `${process.env.NEXT_PUBLIC_GATEWAY_API_URL}/api` : 'http://localhost:8080/api' }),
   tagTypes: ['Product'],
   endpoints: (builder) => ({
     getProducts: builder.query<Product[], { keyword?: string; page?: number; limit?: number }>({
@@ -104,31 +114,32 @@ export const productsApi = createApi({
         body: data,
       }),
     }),
-    getProductReviews: builder.query<any, { productId: string; page?: number; size?: number; sortBy?: string }>({
-        query: ({ productId, page, size, sortBy }) => ({
+    getProductReviews: builder.query<PaginatedReviewResponse, { productId: string; page?: number; size?: number; sortBy?: string }>({
+        query: ({ productId, page = 0, size = 6, sortBy = 'latest' }) => ({
             url: `/products/${productId}/reviews`,
             params: { page, size, sortBy }
         }),
+        providesTags: (result, error, { productId }) => [{ type: 'Product', id: `reviews-${productId}` }],
     }),
-    createReview: builder.mutation<any, { productId: string; rating: number; content: string; userId: number }>({
+    createReview: builder.mutation<ReviewResponse, { productId: string; rating: number; content: string; userId: number }>({
         query: ({ productId, ...body }) => ({
             url: `/products/${productId}/reviews`,
             method: 'POST',
             body,
         }),
-        invalidatesTags: (result, error, arg) => [{ type: 'Product', id: arg.productId }],
+        invalidatesTags: (result, error, arg) => [{ type: 'Product', id: arg.productId }, { type: 'Product', id: `reviews-${arg.productId}` }],
     }),
-    getProductFAQs: builder.query<any, { productId: string }>({
+    getProductFAQs: builder.query<FAQResponse[], { productId: string }>({
         query: ({ productId }) => `/products/${productId}/faqs`,
-        providesTags: (result, error, { productId }) => [{ type: 'Product', id: productId }],
+        providesTags: (result, error, { productId }) => [{ type: 'Product', id: `faqs-${productId}` }],
     }),
-    createFAQ: builder.mutation<any, { productId: string; question: string; userId: number; answer?: string; order?: number }>({
+    createFAQ: builder.mutation<FAQResponse, { productId: string; question: string; answer?: string; order?: number }>({
         query: ({ productId, ...body }) => ({
             url: `/products/${productId}/faqs`,
             method: 'POST',
             body,
         }),
-        invalidatesTags: (result, error, arg) => [{ type: 'Product', id: arg.productId }],
+        invalidatesTags: (result, error, arg) => [{ type: 'Product', id: arg.productId }, { type: 'Product', id: `faqs-${arg.productId}` }],
     }),
   }),
 });

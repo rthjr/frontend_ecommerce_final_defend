@@ -2,14 +2,32 @@ import { NextRequest, NextResponse } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
 
 // Configure Cloudinary (server-side only - API secret is safe here)
+const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_CLOUD_NAME;
+const apiKey = process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY || process.env.CLOUDINARY_API_KEY;
+const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
 cloudinary.config({
-  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+  cloud_name: cloudName,
+  api_key: apiKey,
+  api_secret: apiSecret,
 });
 
 export async function POST(request: NextRequest) {
   try {
+    // Debug: Log config (without secret)
+    console.log('Cloudinary config check:', {
+      cloud_name: cloudName,
+      api_key: apiKey ? apiKey.substring(0, 8) + '...' : 'MISSING',
+      api_secret: apiSecret ? 'SET' : 'MISSING',
+    });
+
+    if (!cloudName || !apiKey || !apiSecret) {
+      return NextResponse.json(
+        { error: `Cloudinary config missing: cloud_name=${!!cloudName}, api_key=${!!apiKey}, api_secret=${!!apiSecret}` },
+        { status: 500 }
+      );
+    }
+
     // Get the form data
     const formData = await request.formData();
     const file = formData.get('file') as File;

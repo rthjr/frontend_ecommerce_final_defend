@@ -159,7 +159,6 @@ export default function ProductDetailPage() {
       await createFAQ({
         productId,
         question: faqQuestion,
-        userId: parseInt(userInfo._id),
       }).unwrap();
       
       toast.success('Question submitted successfully!');
@@ -580,18 +579,18 @@ export default function ProductDetailPage() {
                   </div>
                 ) : Array.isArray(reviews) && reviews.length > 0 ? (
                   <div className="space-y-4">
-                    {reviews.map((review: { id: number; userId: number; userName?: string; rating: number; content: string; createdAt: string }) => (
+                    {reviews.map((review: { id: number; userId: number; user?: string; rating: number; content: string; date: string; verifiedPurchase?: boolean; helpfulCount?: number }) => (
                       <div key={review.id} className="border-b pb-4 last:border-0">
                         <div className="flex items-start gap-3">
                           <Avatar className="h-10 w-10">
                             <AvatarFallback>
-                              {review.userName?.charAt(0).toUpperCase() || 'U'}
+                              {review.user?.charAt(0).toUpperCase() || 'U'}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="font-medium">{review.userName || `User ${review.userId}`}</p>
+                                <p className="font-medium">{review.user || `User ${review.userId}`}</p>
                                 <div className="flex items-center gap-2">
                                   <div className="flex">
                                     {[1, 2, 3, 4, 5].map((star) => (
@@ -605,13 +604,19 @@ export default function ProductDetailPage() {
                                       />
                                     ))}
                                   </div>
+                                  {review.verifiedPurchase && (
+                                    <span className="text-xs text-green-600 font-medium">Verified Purchase</span>
+                                  )}
                                   <span className="text-xs text-muted-foreground">
-                                    {review.createdAt && format(new Date(review.createdAt), 'MMM d, yyyy')}
+                                    {review.date && format(new Date(review.date), 'MMM d, yyyy')}
                                   </span>
                                 </div>
                               </div>
                             </div>
                             <p className="mt-2 text-sm text-muted-foreground">{review.content}</p>
+                            {review.helpfulCount !== undefined && review.helpfulCount > 0 && (
+                              <p className="mt-1 text-xs text-muted-foreground">{review.helpfulCount} people found this helpful</p>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -665,7 +670,7 @@ export default function ProductDetailPage() {
                   </div>
                 ) : Array.isArray(faqs) && faqs.length > 0 ? (
                   <Accordion type="single" collapsible className="w-full">
-                    {faqs.map((faq: { id: number; question: string; answer?: string; userName?: string; createdAt?: string }) => (
+                    {faqs.map((faq: { id: number; question: string; answer?: string; order?: number }) => (
                       <AccordionItem key={faq.id} value={`faq-${faq.id}`}>
                         <AccordionTrigger className="text-left">
                           <div className="flex items-start gap-2">
@@ -682,11 +687,6 @@ export default function ProductDetailPage() {
                             <div className="pl-6 text-muted-foreground italic">
                               This question hasn&apos;t been answered yet.
                             </div>
-                          )}
-                          {faq.createdAt && (
-                            <p className="pl-6 mt-2 text-xs text-muted-foreground">
-                              Asked {format(new Date(faq.createdAt), 'MMM d, yyyy')}
-                            </p>
                           )}
                         </AccordionContent>
                       </AccordionItem>

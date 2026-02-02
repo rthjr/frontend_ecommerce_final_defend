@@ -265,7 +265,7 @@ export async function uploadImageViaAPI(
   });
 }
 
-// Try multiple upload methods (API route first, then fallbacks)
+// Try multiple upload methods (API route first for security, then signed upload)
 export async function uploadImageToCloudinaryAny(
   file: File,
   folder: string = 'products'
@@ -276,26 +276,16 @@ export async function uploadImageToCloudinaryAny(
     return await uploadImageViaAPI(file, folder);
   } catch (error: any) {
     console.log('API route upload failed:', error.message);
-    console.log('Falling back to direct Cloudinary upload...');
     
-    // Method 2: Try unsigned upload with product_images preset (requires preset in dashboard)
+    // Method 2: Try signed upload (uses API key + secret, no preset needed)
     try {
-      console.log('Method 2: Trying unsigned upload with product_images preset...');
-      return await uploadImageUnsigned(file, 'product_images', folder);
-    } catch (presetError: any) {
-      console.log('product_images preset not found:', presetError.message);
+      console.log('Method 2: Trying signed upload (no preset needed)...');
+      return await uploadImageSigned(file, folder);
+    } catch (signedError: any) {
+      console.log('Signed upload failed:', signedError.message);
       
-      // Method 3: Final error with helpful instructions
-      throw new Error(
-        `All upload methods failed. To fix this:\n\n` +
-        `Option 1 (Recommended): Create Cloudinary upload preset\n` +
-        `  1. Go to Cloudinary Dashboard → Settings → Upload → Upload presets\n` +
-        `  2. Create preset named "product_images" with "Unsigned" mode\n` +
-        `  3. Set folder to "products"\n\n` +
-        `Option 2: Check that your Next.js dev server is running\n` +
-        `  - The /api/upload endpoint needs the server to be active\n\n` +
-        `Last error: ${presetError.message}`
-      );
+      // Method 3: Final error
+      throw new Error(`All upload methods failed.\n\nAPI route error: ${error.message}\nSigned upload error: ${signedError.message}`);
     }
   }
 }
