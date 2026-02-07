@@ -88,14 +88,164 @@ ROLE_ADMIN > ROLE_USER > ROLE_CUSTOMER > Guest
 ## 🔧 Features by Category
 
 ### 1. Authentication & Security
-- ✅ Email/Password login & registration
-- ✅ OAuth2 login (Google, GitHub, Facebook)
-- ✅ JWT token management with auto-refresh
-- ✅ Password reset via email
-- ✅ Session management (view active sessions, terminate sessions)
-- ✅ Login history tracking
-- ✅ Role-based access control (RBAC)
-- ✅ Protected routes with role verification
+
+#### Authentication Architecture
+
+**Multi-Method Authentication Support:**
+- ✅ **JWT-based Authentication** (Email/Password)
+- ✅ **OAuth2 Social Login** (Google, GitHub, Facebook)
+- ✅ **Dual Authentication Flow** (supports both methods seamlessly)
+
+#### Frontend Authentication Implementation
+
+**Core Components:**
+1. **AuthService** (`src/services/authService.ts`)
+   - Centralized authentication service class
+   - Token management (access token, refresh token, session token)
+   - LocalStorage-based token persistence
+   - User info extraction from JWT tokens
+   - Session management API integration
+
+2. **AuthContext** (`src/contexts/AuthContext.tsx`)
+   - React Context API for global auth state
+   - useReducer for predictable state management
+   - Auth state: `{ isAuthenticated, user, accessToken, refreshToken, isLoading, error }`
+   - Role-based helper methods: `hasRole()`, `hasAnyRole()`, `isAdmin()`, `isUser()`, `isCustomer()`
+
+3. **JWT Utilities** (`src/lib/utils/jwt.ts`)
+   - Client-side JWT decoding (no external dependencies)
+   - Token expiration checking
+   - User info extraction from token payload
+   - Time until expiration calculation
+
+4. **API Client** (`src/lib/api.ts`)
+   - `withAuthToken()` method for authenticated requests
+   - Automatic Bearer token injection
+   - Unified error handling
+   - Gateway-based routing (all requests to port 8080)
+
+**Authentication Features:**
+
+**A. JWT Authentication Flow**
+1. **Login:**
+   - POST `/api/auth/login` with email/password
+   - Receives: `{ accessToken, refreshToken, sessionToken, userInfo }`
+   - Stores tokens in localStorage
+   - Updates AuthContext state
+   - Creates user session on backend
+
+2. **Registration:**
+   - POST `/api/auth/register` with name, email, password
+   - Auto-assigns `ROLE_CUSTOMER` role
+   - Returns JWT tokens + user info
+   - Immediately logs user in
+
+3. **Token Refresh:**
+   - POST `/api/auth/refresh` with refreshToken
+   - Receives new accessToken
+   - Updates localStorage and context
+   - Clears auth data on failure
+
+4. **Logout:**
+   - Calls both JWT and OAuth2 logout endpoints
+   - Clears all localStorage data (tokens, user info, session token)
+   - Resets AuthContext to initial state
+   - Always succeeds locally even if API fails
+
+**B. OAuth2 Social Login Flow**
+1. **Providers Supported:**
+   - Google OAuth2
+   - GitHub OAuth2
+   - Facebook OAuth2
+
+2. **OAuth2 Login Process:**
+   - User clicks social login button
+   - Redirects to `/oauth2/authorization/{provider}`
+   - Backend handles OAuth2 dance with provider
+   - Success: redirects to `/oauth2/redirect?token=xxx`
+   - Failure: redirects to `/oauth2/redirect?error=xxx`
+   - Frontend extracts token and stores it
+
+3. **OAuth2 User Info:**
+   - GET `/api/oauth2/user` - fetch OAuth2 user attributes
+   - GET `/api/oauth2/providers` - list available providers with auth URLs
+
+**C. Password Reset Flow (3-Step Process)**
+1. **Request Reset:**
+   - POST `/api/auth/forgot-password` with email
+   - Backend sends 6-digit reset code via email
+   - Always returns success (prevents email enumeration)
+
+2. **Verify Code:**
+   - POST `/api/auth/verify-reset-code` with email + resetCode
+   - Returns `{ valid: boolean, message: string }`
+   - Must succeed before allowing password reset
+
+3. **Reset Password:**
+   - POST `/api/auth/reset-password` with email, resetCode, newPassword
+   - Validates code one more time
+   - Updates password and marks code as used
+
+**D. Session Management**
+1. **Session Tracking:**
+   - Each login creates a UserSession in backend
+   - Tracks: device info, browser, OS, IP address, location
+   - Session token stored in localStorage as `sessionToken`
+   - Sent via `X-Session-Token` header for session operations
+
+2. **Session Operations:**
+   - **GET `/api/auth/sessions`** - List active sessions
+     - Requires `X-Session-Token` header
+     - Marks current session with `current: true`
+
+   - **GET `/api/auth/sessions/history`** - Login history
+     - Shows all sessions (active + expired)
+     - Useful for security audit
+
+   - **DELETE `/api/auth/sessions/{id}`** - Terminate specific session
+     - Cannot terminate current session
+
+   - **DELETE `/api/auth/sessions`** - Terminate all other sessions
+     - Keeps current session active
+     - Returns count of terminated sessions
+
+**E. Token Storage Strategy**
+- **LocalStorage Keys:**
+  - `access_token` - JWT access token (short-lived, 15 min)
+  - `refresh_token` - JWT refresh token (long-lived, 30 days)
+  - `user_info` - JSON serialized UserInfo object
+  - `sessionToken` - Session tracking token
+
+**F. Role-Based Access Control (RBAC)**
+- **User Roles:**
+  - `ROLE_CUSTOMER` - Default for new registrations
+  - `ROLE_USER` - Sellers/Vendors (assigned by admin)
+  - `ROLE_ADMIN` - Full system access
+
+- **Role Checking Methods:**
+  ```typescript
+  hasRole(role: string): boolean
+  hasAnyRole(roles: string[]): boolean
+  isAdmin(): boolean
+  isUser(): boolean
+  isCustomer(): boolean
+  ```
+
+**G. Protected Route Implementation**
+- Client-side route guards
+- Role verification before rendering pages
+- Automatic redirect to `/login` if unauthenticated
+- Redirect to `/unauthorized` if insufficient permissions
+
+**H. Security Features**
+- ✅ JWT token expiration checking
+- ✅ Automatic token refresh (when refresh token valid)
+- ✅ Secure token storage (localStorage with proper keys)
+- ✅ CSRF protection (stateless JWT)
+- ✅ Email enumeration prevention (password reset)
+- ✅ Session hijacking detection (IP + device tracking)
+- ✅ Multi-device session management
+- ✅ Secure logout (clears all client data)
 
 ### 2. Product Management
 - ✅ Product listing with pagination

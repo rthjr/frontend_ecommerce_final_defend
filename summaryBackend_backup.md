@@ -476,420 +476,122 @@ eureka:
 
 ## 🔐 Authentication & Authorization
 
-### Authentication Architecture Overview
+### Authentication Flow
 
-The system implements a **dual authentication mechanism**:
-1. **JWT-based Authentication** (Email/Password with JWT tokens)
-2. **OAuth2 Social Authentication** (Google, GitHub, Facebook)
+```
+┌─────────┐                ┌─────────────┐              ┌─────────────┐
+│  Client │                │   Gateway   │              │User Service │
+└────┬────┘                └──────┬──────┘              └──────┬──────┘
+     │                            │                            │
+     │  POST /api/auth/login      │                            │
+     │  {email, password}         │                            │
+     │ ──────────────────────────▶│                            │
+     │                            │ Forward to USER-SERVICE    │
+     │                            │ ───────────────────────────▶│
+     │                            │                            │
+     │                            │        Validate credentials│
+     │                            │        Generate JWT tokens │
+     │                            │        Create session      │
+     │                            │                            │
+     │                            │◀─────────────────────────── │
+     │                            │  {accessToken, refreshToken,│
+     │                            │   sessionToken, userInfo}  │
+     │◀─────────────────────────── │                            │
+     │                            │                            │
+     │  GET /api/products         │                            │
+     │  Authorization: Bearer xxx │                            │
+     │ ──────────────────────────▶│                            │
+     │                            │ Validate JWT (optional)    │
+     │                            │ Forward to PRODUCT-SERVICE │
+     │                            │                            │
+```
 
-Both methods are fully integrated and work seamlessly with the same user database and role system
+### JWT Token Structure
 
-
-
----
-
-### Backend Authentication Components
-
-**1. Security Layer** (`user/src/main/java/com/ecommerce/user/security/`)
-- **JwtTokenProvider** - JWT token generation and validation using HS512
-- **JwtAuthenticationFilter** - Request filter validates JWT on each request
-- **JwtAuthenticationEntryPoint** - Handles 401 unauthorized access
-- **CustomUserDetailsService** - Loads user details for authentication
-- **OAuth2AuthenticationSuccessHandler** - Handles successful OAuth2 login
-- **OAuth2AuthenticationFailureHandler** - Handles failed OAuth2 login
-- **CustomOAuth2UserService** - Processes OAuth2 user info from providers
-
-**2. Services Layer** (`user/src/main/java/com/ecommerce/user/services/`)
-- **AuthService** - Core authentication logic (register, login, logout)
-- **RefreshTokenService** - Refresh token management and validation
-- **PasswordResetService** - 3-step password reset flow (request→verify→reset)
-- **SessionService** - Multi-device session tracking and management
-- **OAuth2ClientService** - OAuth2 provider integration and user linking
-
-**3. Controllers** (`user/src/main/java/com/ecommerce/user/controllers/`)
-- **AuthController** - JWT authentication endpoints (/api/auth/*)
-- **OAuth2Controller** - OAuth2 endpoints (/api/oauth2/*)
-
----
-
-### JWT Authentication Implementation
-
-**Login Flow:**
-1. POST `/api/auth/login` with `{ email, password }`
-2. Authenticate via Spring Security's `AuthenticationManager` with BCrypt
-3. Delete old refresh token (only one active refresh token per user)
-4. Generate new access token (15 min expiry, HS512 signed)
-5. Generate new refresh token (30 days expiry)
-6. Parse User-Agent header for device info (browser, OS, device type)
-7. Extract IP address from request (supports proxy headers: X-Forwarded-For, X-Real-IP, etc.)
-8. Create `UserSession` document with device fingerprint and IP tracking
-9. Generate unique session token (UUID) for session management
-10. Return `JwtResponse` with: accessToken, refreshToken, sessionToken, userInfo
-
-**Registration Flow:**
-1. POST `/api/auth/register` with `{ name, email, password }`
-2. Validate email uniqueness
-3. Hash password with BCrypt (strength: 12)
-4. Create user with default role: `ROLE_CUSTOMER`
-5. Generate JWT access token and refresh token
-6. Return `JwtResponse` with tokens and user info
-
-**Token Refresh Flow:**
-1. POST `/api/auth/refresh` with `{ refreshToken }`
-2. Validate refresh token in database (check expiry, existence)
-3. Extract user ID from refresh token
-4. Generate new access token (refresh token stays the same)
-5. Return new access token
-6. If refresh token expired/invalid: return 401, clear client data
-
-**Logout Flow:**
-1. POST `/api/auth/logout` (requires Bearer token)
-2. Extract user ID from Spring SecurityContext
-3. Delete user's refresh token from MongoDB
-4. Clear SecurityContext
-5. Frontend clears localStorage
-
-**Token Structure:**
 ```json
 {
-  "sub": "userId",                          // MongoDB ObjectId
+  "sub": "userId",
   "email": "user@example.com",
-  "roles": "ROLE_CUSTOMER,ROLE_USER",       // Comma-separated
-  "iat": 1706625600,                        // Issued at (Unix timestamp)
-  "exp": 1706626500                         // Expiration (Unix timestamp)
+  "roles": "ROLE_CUSTOMER,ROLE_USER",
+  "iat": 1706625600,
+  "exp": 1706626500
 }
 ```
 
-**Token Configuration:** (Access: 15 min, Refresh: 30 days)
-
-**JWT Implementation Details:**
-- Algorithm: HS512 (HMAC-SHA512)
-- Library: `io.jsonwebtoken:jjwt-api` 0.12.6
-- Secret Key: 256-bit minimum (from environment/config)
-- Validation: Signature, expiration, format all checked
-
----
-
-### OAuth2 Social Authentication
-
-**Supported Providers:**
-1. **Google OAuth2** - `https://www.googleapis.com/oauth2/v4/userinfo`
-2. **GitHub OAuth2** - `https://api.github.com/user`
-3. **Facebook OAuth2** - `https://graph.facebook.com/me`
-
-**OAuth2 Flow:**
-1. User clicks "Login with {Provider}" on frontend
-2. Frontend redirects to `/oauth2/authorization/{provider}` (Google, GitHub, Facebook)
-3. Spring Security OAuth2 Client handles authorization code flow automatically
-4. Provider authent icates user and redirects to `/oauth2/callback/{provider}` with code
-5. **CustomOAuth2UserService** processes OAuth2 user:
-   - Extracts: email, name, avatar from provider-specific attributes
-   - Checks if user exists in database (by email)
-   - If new: creates user with `ROLE_USER` role
-   - If existing: updates OAuth2 info (avatar, provider data)
-   - Stores OAuth2Token and OAuth2UserInfo documents
-6. **OAuth2AuthenticationSuccessHandler** executes on success:
-   - Generates JWT token using user ID
-   - Redirects to frontend: `http://localhost:3000/oauth2/redirect?token={jwt}`
-7. Frontend extracts token from URL and stores it
-
-**OAuth2 API Endpoints:**
-- **GET `/api/oauth2/providers`** - Returns available providers with auth URLs
-- **GET `/api/oauth2/user`** - Get OAuth2 user attributes (requires authentication)
-- **POST `/api/oauth2/logout`** - OAuth2-specific logout handling
-
-**OAuth2 Database Storage:**
-```javascript
-// MongoDB Collections
-oauth2_tokens: {
-  userId: String,
-  provider: "google" | "github" | "facebook",
-  accessToken: String,
-  refreshToken: String,
-  expiresAt: DateTime
-}
-
-oauth2_user_info: {
-  userId: String,
-  provider: String,
-  email: String,
-  name: String,
-  avatarUrl: String,
-  attributes: Map<String, Object>  // Raw provider data
-}
+### Token Configuration
+```yaml
+jwt:
+  secret: your-256-bit-secret-key-here-at-least-32-characters-long
+  access-token-expiration-ms: 900000      # 15 minutes
+  refresh-token-expiration-ms: 2592000000  # 30 days
 ```
 
----
+### Security Configuration
 
-### Password Reset Flow (3-Step Process)
-
-**Step 1: Request Reset Code**
-- **Endpoint:** POST `/api/auth/forgot-password`
-- **Request:** `{ "email": "user@example.com" }`
-- **Process:**
-  1. Validate email format
-  2. Find user in database (if not found, still return success)
-  3. Generate random 6-digit code (100000-999999)
-  4. Create `PasswordResetToken` with 15-minute expiry
-  5. Send email with code via EmailService (SMTP/SendGrid)
-- **Response:** Always success (prevents email enumeration attack)
-  ```json
-  {
-    "message": "If an account exists, you will receive a reset code shortly.",
-    "success": true
-  }
-  ```
-
-**Step 2: Verify Reset Code**
-- **Endpoint:** POST `/api/auth/verify-reset-code`
-- **Request:** `{ "email": "user@example.com", "resetCode": "123456" }`
-- **Validation:**
-  - Token must exist for this email
-  - Code must match exactly
-  - Token must not be expired (15 min window)
-  - Token must not be already used
-- **Response:**
-  ```json
-  { "valid": true, "message": "Reset code is valid" }
-  ```
-
-**Step 3: Reset Password**
-- **Endpoint:** POST `/api/auth/reset-password`
-- **Request:** `{ "email": "user@example.com", "resetCode": "123456", "newPassword": "NewP@ss123" }`
-- **Process:**
-  1. Verify code again (same validation as step 2)
-  2. Hash new password with BCrypt (strength 12)
-  3. Update user password in database
-  4. Mark token as `used: true` (prevents reuse)
-  5. Delete all refresh tokens (forces re-login on all devices)
-- **Response:**
-  ```json
-  { "message": "Password has been reset successfully", "success": true }
-  ```
-
-**Security Features:**
-- 6-digit numeric code (1,000,000 combinations)
-- 15-minute expiration window
-- Single-use tokens (can't reuse after password reset)
-- Email enumeration prevention
-- Secure code generation (SecureRandom)
-
----
-
-### Session Management System
-
-**Purpose:** Track user sessions across multiple devices for security and UX
-
-**UserSession Model:**
-```javascript
-{
-  _id: ObjectId,
-  userId: String,              // FK → users._id
-  sessionToken: String,        // UUID v4
-  deviceInfo: String,          // "MacBook Pro" / "iPhone 13"
-  browser: String,             // "Chrome 120" / "Safari 17"
-  operatingSystem: String,     // "macOS 14" / "iOS 17"
-  ipAddress: String,           // "192.168.1.100"
-  location: String,            // "San Francisco, CA" (optional, needs GeoIP)
-  isCurrent: Boolean,          // true for current session
-  isActive: Boolean,           // false when terminated
-  createdAt: DateTime,         // Login time
-  lastActivity: DateTime,      // Last API call time
-  expiresAt: DateTime          // Auto-expire after 30 days
-}
-```
-
-**Session Creation (on login):**
-1. Parse User-Agent header → extract browser, OS, device type
-2. Extract client IP (handles proxies: X-Forwarded-For, X-Real-IP, Proxy-Client-IP, etc.)
-3. Generate UUID v4 as session token
-4. Create UserSession document with all metadata
-5. Mark as current session
-6. Return session token to client (stored in localStorage)
-
-**Session API Endpoints:**
-
-1. **GET `/api/auth/sessions`** - View active sessions
-   - Headers: `Authorization: Bearer {JWT}`, `X-Session-Token: {UUID}`
-   - Returns: List of active sessions, current one marked with `current: true`
-   - Use case: User views "Where you're logged in" page
-
-2. **GET  `/api/auth/sessions/history`** - View login history
-   - Returns: All sessions (active + terminated)
-   - Use case: Security audit, suspicious activity detection
-
-3. **DELETE `/api/auth/sessions/{sessionId}`** - Terminate specific session
-   - Validates: User owns that session, not terminating current session
-   - Action: Sets `isActive: false`
-   - Use case: "Sign out from iPhone" button
-
-4. **DELETE `/api/auth/sessions`** - Terminate all other sessions
-   - Headers: Requires `X-Session-Token` to identify current session
-   - Action: Sets `isActive: false` for all sessions except current
-   - Returns: Count of terminated sessions
-   - Use case: "Sign out everywhere else" button
-
-**Session Security:**
-- Device fingerprinting (browser + OS + device type)
-- IP address tracking (detect session hijacking)
-- Automatic expiration (30 days)
-- Manual termination (user-initiated)
-- Activity timestamp updates (track last seen)
-
----
-
-### Spring Security Configuration
-
-**SecurityConfig.java:**
 ```java
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity(prePostEnabled = true)  // Enables @PreAuthorize
+@EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> cors.disable())  // CORS handled by Gateway
-            .csrf(csrf -> csrf.disable())  // Stateless JWT, no CSRF needed
-            .sessionManagement(session ->
+            .cors(cors -> cors.disable())  // Handled by Gateway
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(session -> 
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
-                // Public endpoints
                 .requestMatchers("/auth/**", "/api/auth/**").permitAll()
                 .requestMatchers("/api/oauth2/**", "/oauth2/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                // Admin endpoints
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                // All other require authentication
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2
-                .userInfoEndpoint(userInfo ->
+                .userInfoEndpoint(userInfo -> 
                     userInfo.userService(customOAuth2UserService))
                 .successHandler(oAuth2AuthenticationSuccessHandler)
-                .failureHandler(oAuth2AuthenticationFailureHandler)
             );
-
-        // Add JWT filter before Spring Security's built-in auth filter
-        http.addFilterBefore(jwtAuthFilter,
-                           UsernamePasswordAuthenticationFilter.class);
+        
+        http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(12);  // Strength: 12 rounds
-    }
 }
 ```
 
-**JwtAuthenticationFilter** (runs on every request):
-1. Extract JWT from `Authorization: Bearer {token}` header
-2. Validate token signature, expiration, format
-3. Extract user ID from token claims
-4. Load UserPrincipal from database
-5. Create `Authentication` object with user details and roles
-6. Set in `SecurityContextHolder` for downstream processing
-7. If validation fails: log error, continue without authentication
+### User Roles
 
-**Role-Based Access Control:**
-```java
-// Controller method examples
-@PreAuthorize("hasRole('ADMIN')")
-@DeleteMapping("/api/users/{id}")
-public void deleteUser(@PathVariable String id) {...}
+| Role | Description | Permissions |
+|------|-------------|-------------|
+| `ROLE_CUSTOMER` | Regular customer | Browse, cart, checkout, own orders |
+| `ROLE_USER` | Seller/Vendor | All customer + manage own products |
+| `ROLE_ADMIN` | Administrator | Full system access |
 
-@PreAuthorize("hasAnyRole('USER', 'ADMIN')")
-@PostMapping("/api/products")
-public void createProduct(@RequestBody ProductRequest req) {...}
-
-@PreAuthorize("isAuthenticated()")
-@GetMapping("/api/auth/me")
-public UserInfo getCurrentUser() {...}
+### Role Hierarchy
+```
+ROLE_ADMIN > ROLE_USER > ROLE_CUSTOMER
 ```
 
-**User Roles:**
+### OAuth2 Providers
 
-| Role | Assignment | Permissions |
-|------|-----------|-------------|
-| `ROLE_CUSTOMER` | Auto on registration | Browse products, cart, checkout, view own orders, manage profile |
-| `ROLE_USER` | Admin-assigned | All customer permissions + create/edit/delete own products |
-| `ROLE_ADMIN` | Manual DB insert | Full system access - manage all users, products, orders |
+The system supports 3 OAuth2 providers:
+- **Google**: `https://www.googleapis.com/oauth2/v4/userinfo`
+- **GitHub**: `https://api.github.com/user`
+- **Facebook**: `https://graph.facebook.com/me`
 
-**Role Storage:**
-- MongoDB: `roles: ["ROLE_CUSTOMER", "ROLE_USER"]` (Set<String>)
-- JWT: `"roles": "ROLE_CUSTOMER,ROLE_USER"` (comma-separated string)
-- Spring Security: `GrantedAuthority` collection
-
----
-
-### API Gateway JWT Filter (Optional, Currently Disabled)
-
-Located at: `gateway/src/main/java/com/ecommerce/gateway/JwtAuthFilter.java`
-
-```java
-// @Component  <-- Currently commented out
-public class JwtAuthFilter implements WebFilter {
-    @Override
-    public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-        String authHeader = exchange.getRequest()
-            .getHeaders()
-            .getFirst(HttpHeaders.AUTHORIZATION);
-
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-            return exchange.getResponse().setComplete();
-        }
-
-        // Could add JWT validation logic here
-        return chain.filter(exchange);
-    }
-}
+```yaml
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            redirect-uri: http://localhost:8082/oauth2/callback/google
+            scope: email,profile
 ```
-
-**Note:** JWT validation currently happens at User Service level. Gateway filter is disabled to avoid double validation and performance overhead.
-
----
-
-### Security Best Practices Implemented
-
-**✅ Password Security:**
-- BCrypt hashing with strength 12 (2^12 = 4096 rounds)
-- No plaintext passwords ever stored
-- Password change requires old password verification
-- Minimum password requirements can be added
-
-**✅ Token Security:**
-- Short-lived access tokens (15 min) - limits damage if stolen
-- Long-lived refresh tokens (30 days) - better UX
-- Refresh token rotation on use
-- HS512 signature algorithm (512-bit hash)
-- Secret key minimum 256 bits
-- Token expiration strictly enforced
-
-**✅ Session Security:**
-- Multi-device session tracking (see all logins)
-- Device fingerprinting (browser + OS + device)
-- IP address tracking (detect suspicious activity)
-- Remote session termination ("sign out from iPhone")
-- Automatic expiration (30 days inactivity)
-- Last activity timestamp
-
-**✅ API Security:**
-- Stateless authentication (horizontally scalable)
-- CORS configured at Gateway level
-- CSRF protection not needed (stateless tokens)
-- Role-based authorization (@PreAuthorize)
-- Input validation on all endpoints
-- Request logging for audit trails
-
-**✅ Privacy & Compliance:**
-- Email enumeration prevention (password reset always returns success)
-- Secure password reset flow (6-digit code, 15 min expiry, single-use)
-- GDPR data export (/api/users/profile/export)
-- GDPR account deletion (/api/users/profile - DELETE)
-- OAuth2 integration with proper consent flows
-- User data minimization (only store necessary info)
 
 ---
 

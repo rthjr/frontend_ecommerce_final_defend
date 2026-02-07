@@ -1,11 +1,14 @@
 import { userApiClient } from '@/lib/api';
-import { 
-  LoginRequest, 
-  RegisterRequest, 
-  RefreshTokenRequest, 
-  JwtResponse, 
-  UserInfo, 
-  OAuth2Providers 
+import {
+  LoginRequest,
+  RegisterRequest,
+  RefreshTokenRequest,
+  JwtResponse,
+  UserInfo,
+  OAuth2Providers,
+  SessionResponse,
+  TerminateSessionResponse,
+  TerminateAllSessionsResponse
 } from '@/lib/types/auth';
 import { extractUserInfoFromToken, isTokenExpired } from '@/lib/utils/jwt';
 
@@ -246,10 +249,11 @@ class AuthService {
     return { data: response.data || null, error: null, status: response.status };
   }
 
-  // Validate reset token
-  async validateResetToken(token: string) {
-    const response = await userApiClient.get<{ valid: boolean; message: string }>(
-      `/api/auth/validate-reset-token?token=${token}`
+  // Verify 6-digit reset code
+  async verifyResetCode(email: string, resetCode: string) {
+    const response = await userApiClient.post<{ valid: boolean; message: string }>(
+      '/api/auth/verify-reset-code',
+      { email, resetCode }
     );
     if (response.error) {
       return { data: null, error: response.error, status: response.status };
@@ -257,16 +261,107 @@ class AuthService {
     return { data: response.data || null, error: null, status: response.status };
   }
 
-  // Reset password with token
-  async resetPassword(token: string, newPassword: string, confirmPassword: string) {
+  // Reset password with code
+  async resetPassword(email: string, resetCode: string, newPassword: string) {
     const response = await userApiClient.post<{ message: string; success: boolean }>(
       '/api/auth/reset-password',
-      { token, newPassword, confirmPassword }
+      { email, resetCode, newPassword }
     );
     if (response.error) {
       return { data: null, error: response.error, status: response.status };
     }
     return { data: response.data || null, error: null, status: response.status };
+  }
+
+  // ===== SESSION MANAGEMENT =====
+
+  // Helper to create headers with session token
+  private getSessionHeaders(): Record<string, string> {
+    const sessionToken = this.getSessionToken();
+    const accessToken = this.getAccessToken();
+
+    if (!sessionToken) {
+      throw new Error('No session token available');
+    }
+
+    return {
+      'X-Session-Token': sessionToken,
+      'Authorization': `Bearer ${accessToken}`,
+    };
+  }
+
+  // Get active sessions
+  async getActiveSessions() {
+    try {
+      const headers = this.getSessionHeaders();
+      const response = await userApiClient.get<SessionResponse[]>(
+        '/api/auth/sessions',
+        headers
+      );
+      if (response.error) {
+        return { data: null, error: response.error, status: response.status };
+      }
+      return { data: response.data || null, error: null, status: response.status };
+    } catch (error: any) {
+      return { data: null, error: error.message, status: 0 };
+    }
+  }
+
+  // Get login history
+  async getLoginHistory() {
+    try {
+      const headers = this.getSessionHeaders();
+      const response = await userApiClient.get<SessionResponse[]>(
+        '/api/auth/sessions/history',
+        headers
+      );
+      if (response.error) {
+        return { data: null, error: response.error, status: response.status };
+      }
+      return { data: response.data || null, error: null, status: response.status };
+    } catch (error: any) {
+      return { data: null, error: error.message, status: 0 };
+    }
+  }
+
+  // Terminate specific session
+  async terminateSession(sessionId: string) {
+    try {
+      const sessionToken = this.getSessionToken();
+      const headers = {
+        'X-Session-Token': sessionToken || '',
+      };
+
+      const response = await userApiClient.delete<TerminateSessionResponse>(
+        `/api/auth/sessions/${sessionId}`,
+        undefined,
+        headers
+      );
+      if (response.error) {
+        return { data: null, error: response.error, status: response.status };
+      }
+      return { data: response.data || null, error: null, status: response.status };
+    } catch (error: any) {
+      return { data: null, error: error.message, status: 0 };
+    }
+  }
+
+  // Terminate all other sessions (keep current)
+  async terminateAllOtherSessions() {
+    try {
+      const headers = this.getSessionHeaders();
+      const response = await userApiClient.delete<TerminateAllSessionsResponse>(
+        '/api/auth/sessions',
+        undefined,
+        headers
+      );
+      if (response.error) {
+        return { data: null, error: response.error, status: response.status };
+      }
+      return { data: response.data || null, error: null, status: response.status };
+    } catch (error: any) {
+      return { data: null, error: error.message, status: 0 };
+    }
   }
 }
 

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { User, Package, MapPin, Settings, LogOut } from 'lucide-react';
+import { User, Package, MapPin, Settings, LogOut, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -45,6 +45,7 @@ export default function ProfileSidebar() {
     { href: '/profile', label: 'Profile', icon: User },
     { href: '/profile/orders', label: 'Orders', icon: Package },
     { href: '/profile/addresses', label: 'Addresses', icon: MapPin },
+    { href: '/profile/security', label: 'Security', icon: Shield },
     { href: '/profile/settings', label: 'Settings', icon: Settings },
   ];
 

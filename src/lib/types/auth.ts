@@ -79,3 +79,58 @@ export interface AuthContextType {
   isUser: () => boolean;
   isCustomer: () => boolean;
 }
+
+// Session Management Types
+export interface SessionResponse {
+  id: string;
+  userId: string;
+  deviceInfo: string;  // User-Agent
+  ipAddress: string;
+  loginTime: string;   // ISO date
+  lastActivity: string; // ISO date
+  active: boolean;
+  current: boolean;    // marks current session
+}
+
+// Password Reset Flow Types (3-step process)
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ForgotPasswordResponse {
+  message: string;
+  success: boolean;
+}
+
+export interface VerifyResetCodeRequest {
+  email: string;
+  resetCode: string;
+}
+
+export interface VerifyResetCodeResponse {
+  valid: boolean;
+  message: string;
+}
+
+export interface ResetPasswordRequest {
+  email: string;
+  resetCode: string;
+  newPassword: string;
+}
+
+export interface ResetPasswordResponse {
+  message: string;
+  success: boolean;
+}
+
+// Session Management Request/Response Types
+export interface TerminateSessionResponse {
+  message: string;
+  success: boolean;
+}
+
+export interface TerminateAllSessionsResponse {
+  message: string;
+  count: number;
+  success: boolean;
+}
